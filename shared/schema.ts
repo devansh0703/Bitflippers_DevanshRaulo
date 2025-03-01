@@ -29,6 +29,16 @@ export const reports = pgTable("reports", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// New table for resource tracking
+export const resources = pgTable("resources", {
+  id: serial("id").primaryKey(),
+  type: text("type").notNull(), // 'ambulance', 'bed', 'staff', 'supplies'
+  status: text("status").notNull(), // 'available', 'occupied', 'maintenance'
+  details: jsonb("details").notNull(), // Additional details specific to resource type
+  location: jsonb("location"), // For mobile resources like ambulances
+  lastUpdated: timestamp("last_updated").notNull().defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -51,7 +61,16 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   location: true,
 });
 
+export const insertResourceSchema = createInsertSchema(resources).pick({
+  type: true,
+  status: true,
+  details: true,
+  location: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+export type Resource = typeof resources.$inferSelect;
+export type InsertResource = z.infer<typeof insertResourceSchema>;

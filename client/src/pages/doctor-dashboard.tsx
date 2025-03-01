@@ -12,6 +12,7 @@ import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp } from "lucide-
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NavBar } from "@/components/nav-bar";
 import { vitalSignThresholds, analyzeVitalSigns } from "@/lib/vital-signs";
+import { ResourceDashboard } from "@/components/resource-dashboard";
 
 export default function DoctorDashboard() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -135,146 +136,147 @@ export default function DoctorDashboard() {
     <div className="min-h-screen bg-background">
       <NavBar />
       <div className="container mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Map Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Paramedic Locations</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div ref={mapRef} className="h-[500px] rounded-lg overflow-hidden" />
-            </CardContent>
-          </Card>
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-4">Resource Management</h2>
+            <ResourceDashboard />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Paramedic Locations</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div ref={mapRef} className="h-[500px] rounded-lg overflow-hidden" />
+              </CardContent>
+            </Card>
 
-          {/* Reports Section */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Patient Reports</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {/* Filters */}
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <div className="relative">
-                      <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                      <Input
-                        placeholder="Search reports..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="pl-9"
-                      />
+            <Card>
+              <CardHeader>
+                <CardTitle>Patient Reports</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search reports..."
+                          value={search}
+                          onChange={(e) => setSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
                     </div>
+                    <Select value={sortBy} onValueChange={(value: "time" | "severity") => setSortBy(value)}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="time">Most Recent</SelectItem>
+                        <SelectItem value="severity">Severity</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filter by severity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Severities</SelectItem>
+                        <SelectItem value="immediate">Immediate</SelectItem>
+                        <SelectItem value="urgent">Urgent</SelectItem>
+                        <SelectItem value="delayed">Delayed</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  <Select value={sortBy} onValueChange={(value: "time" | "severity") => setSortBy(value)}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="time">Most Recent</SelectItem>
-                      <SelectItem value="severity">Severity</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="Filter by severity" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Severities</SelectItem>
-                      <SelectItem value="immediate">Immediate</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                      <SelectItem value="delayed">Delayed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {/* Reports List */}
-                <ScrollArea className="h-[400px] rounded-md border">
-                  <div className="space-y-4 p-4">
-                    {sortedReports?.map((report) => (
-                      <Card key={report.id}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-4">
-                            <div>
-                              <h3 className="font-semibold text-lg">{report.patientName}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {new Date(report.createdAt).toLocaleString()}
-                              </p>
-                            </div>
-                            <Badge 
-                              className={`flex items-center gap-2 ${getSeverityColor(report.triageAssessment?.severity)}`}
-                            >
-                              {getSeverityIcon(report.triageAssessment?.severity)}
-                              {report.triageAssessment?.severity || "Pending"}
-                            </Badge>
-                          </div>
-
-                          {/* Critical Condition Warnings */}
-                          {renderVitalSignWarnings(report)}
-
-                          <Tabs defaultValue="assessment">
-                            <TabsList className="w-full">
-                              <TabsTrigger value="assessment">AI Assessment</TabsTrigger>
-                              <TabsTrigger value="vitals">Vitals</TabsTrigger>
-                              <TabsTrigger value="details">Patient Details</TabsTrigger>
-                            </TabsList>
-
-                            <TabsContent value="assessment" className="mt-4">
-                              {report.triageAssessment ? (
-                                <div className="space-y-2">
-                                  <div className="font-medium">Assessment Explanation:</div>
-                                  <p className="text-sm whitespace-pre-wrap">
-                                    {report.triageAssessment.explanation}
-                                  </p>
-                                </div>
-                              ) : (
+                  <ScrollArea className="h-[400px] rounded-md border">
+                    <div className="space-y-4 p-4">
+                      {sortedReports?.map((report) => (
+                        <Card key={report.id}>
+                          <CardContent className="p-4">
+                            <div className="flex justify-between items-start mb-4">
+                              <div>
+                                <h3 className="font-semibold text-lg">{report.patientName}</h3>
                                 <p className="text-sm text-muted-foreground">
-                                  AI assessment pending...
+                                  {new Date(report.createdAt).toLocaleString()}
                                 </p>
-                              )}
-                            </TabsContent>
-
-                            <TabsContent value="vitals" className="mt-4">
-                              <div className="grid grid-cols-2 gap-2 text-sm">
-                                <div>Heart Rate: {report.heartRate} bpm</div>
-                                <div>BP: {report.bloodPressure}</div>
-                                <div>Resp: {report.respiratoryRate}/min</div>
-                                <div>O2: {report.oxygenSaturation}%</div>
-                                <div>Temp: {report.temperature}°C</div>
                               </div>
-                            </TabsContent>
+                              <Badge 
+                                className={`flex items-center gap-2 ${getSeverityColor(report.triageAssessment?.severity)}`}
+                              >
+                                {getSeverityIcon(report.triageAssessment?.severity)}
+                                {report.triageAssessment?.severity || "Pending"}
+                              </Badge>
+                            </div>
 
-                            <TabsContent value="details" className="mt-4">
-                              <div className="space-y-2 text-sm">
-                                <p><strong>Complaints:</strong> {report.complaints}</p>
-                                {report.medicalHistory && (
-                                  <p><strong>Medical History:</strong> {report.medicalHistory}</p>
-                                )}
-                                {report.allergies && (
-                                  <p><strong>Allergies:</strong> {report.allergies}</p>
-                                )}
-                                {report.currentMedications && (
-                                  <p><strong>Current Medications:</strong> {report.currentMedications}</p>
-                                )}
-                              </div>
-                            </TabsContent>
-                          </Tabs>
+                            {renderVitalSignWarnings(report)}
 
-                          <div className="mt-4 flex items-center text-sm text-muted-foreground">
-                            <MapPin className="h-4 w-4 mr-1" />
-                            <span>
-                              {(report.location as { lat: number; lon: number }).lat.toFixed(4)}, 
-                              {(report.location as { lat: number; lon: number }).lon.toFixed(4)}
-                            </span>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
+                            <Tabs defaultValue="assessment">
+                              <TabsList className="w-full">
+                                <TabsTrigger value="assessment">AI Assessment</TabsTrigger>
+                                <TabsTrigger value="vitals">Vitals</TabsTrigger>
+                                <TabsTrigger value="details">Patient Details</TabsTrigger>
+                              </TabsList>
+
+                              <TabsContent value="assessment" className="mt-4">
+                                {report.triageAssessment ? (
+                                  <div className="space-y-2">
+                                    <div className="font-medium">Assessment Explanation:</div>
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {report.triageAssessment.explanation}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-sm text-muted-foreground">
+                                    AI assessment pending...
+                                  </p>
+                                )}
+                              </TabsContent>
+
+                              <TabsContent value="vitals" className="mt-4">
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>Heart Rate: {report.heartRate} bpm</div>
+                                  <div>BP: {report.bloodPressure}</div>
+                                  <div>Resp: {report.respiratoryRate}/min</div>
+                                  <div>O2: {report.oxygenSaturation}%</div>
+                                  <div>Temp: {report.temperature}°C</div>
+                                </div>
+                              </TabsContent>
+
+                              <TabsContent value="details" className="mt-4">
+                                <div className="space-y-2 text-sm">
+                                  <p><strong>Complaints:</strong> {report.complaints}</p>
+                                  {report.medicalHistory && (
+                                    <p><strong>Medical History:</strong> {report.medicalHistory}</p>
+                                  )}
+                                  {report.allergies && (
+                                    <p><strong>Allergies:</strong> {report.allergies}</p>
+                                  )}
+                                  {report.currentMedications && (
+                                    <p><strong>Current Medications:</strong> {report.currentMedications}</p>
+                                  )}
+                                </div>
+                              </TabsContent>
+                            </Tabs>
+
+                            <div className="mt-4 flex items-center text-sm text-muted-foreground">
+                              <MapPin className="h-4 w-4 mr-1" />
+                              <span>
+                                {(report.location as { lat: number; lon: number }).lat.toFixed(4)}, 
+                                {(report.location as { lat: number; lon: number }).lon.toFixed(4)}
+                              </span>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </ScrollArea>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     </div>

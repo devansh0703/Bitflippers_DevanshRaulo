@@ -1,6 +1,6 @@
 import session from "express-session";
 import createMemoryStore from "memorystore";
-import { User, Report, InsertUser, InsertReport } from "@shared/schema";
+import { User, Report, Resource, InsertUser, InsertReport, InsertResource } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
 
@@ -12,22 +12,49 @@ export interface IStorage {
   getReports(): Promise<Report[]>;
   getReportById(id: number): Promise<Report | undefined>;
   updateReportTriage(id: number, assessment: { severity: string; explanation: string }): Promise<Report>;
+  getResources(): Promise<Resource[]>;
+  createResource(resource: InsertResource): Promise<Resource>;
+  updateResourceStatus(id: number, status: string): Promise<Resource>;
   sessionStore: session.Store;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private reports: Map<number, Report>;
+  private resources: Map<number, Resource>;
   private currentUserId: number;
   private currentReportId: number;
+  private currentResourceId: number;
   sessionStore: session.Store;
 
   constructor() {
     this.users = new Map();
     this.reports = new Map();
+    this.resources = new Map();
     this.currentUserId = 1;
     this.currentReportId = 1;
+    this.currentResourceId = 1;
     this.sessionStore = new MemoryStore({ checkPeriod: 86400000 });
+
+    // Initialize some default resources
+    this.initializeDefaultResources();
+  }
+
+  private async initializeDefaultResources() {
+    const defaultResources = [
+      { type: "ambulance", status: "available", details: { name: "Ambulance 1" }, location: { lat: 40.7128, lon: -74.0060 } },
+      { type: "ambulance", status: "occupied", details: { name: "Ambulance 2" }, location: { lat: 40.7138, lon: -74.0070 } },
+      { type: "bed", status: "available", details: { name: "Emergency Room 1" } },
+      { type: "bed", status: "occupied", details: { name: "Emergency Room 2" } },
+      { type: "staff", status: "available", details: { name: "Emergency Team A" } },
+      { type: "staff", status: "occupied", details: { name: "Emergency Team B" } },
+      { type: "supplies", status: "available", details: { name: "Emergency Kit 1" } },
+      { type: "supplies", status: "maintenance", details: { name: "Emergency Kit 2" } },
+    ];
+
+    for (const resource of defaultResources) {
+      await this.createResource(resource);
+    }
   }
 
   async getUser(id: number): Promise<User | undefined> {
@@ -71,10 +98,38 @@ export class MemStorage implements IStorage {
   async updateReportTriage(id: number, assessment: { severity: string; explanation: string }): Promise<Report> {
     const report = await this.getReportById(id);
     if (!report) throw new Error("Report not found");
-    
+
     const updatedReport = { ...report, triageAssessment: assessment };
     this.reports.set(id, updatedReport);
     return updatedReport;
+  }
+
+  async getResources(): Promise<Resource[]> {
+    return Array.from(this.resources.values());
+  }
+
+  async createResource(insertResource: InsertResource): Promise<Resource> {
+    const id = this.currentResourceId++;
+    const resource: Resource = {
+      ...insertResource,
+      id,
+      lastUpdated: new Date(),
+    };
+    this.resources.set(id, resource);
+    return resource;
+  }
+
+  async updateResourceStatus(id: number, status: string): Promise<Resource> {
+    const resource = this.resources.get(id);
+    if (!resource) throw new Error("Resource not found");
+
+    const updatedResource = {
+      ...resource,
+      status,
+      lastUpdated: new Date(),
+    };
+    this.resources.set(id, updatedResource);
+    return updatedResource;
   }
 }
 

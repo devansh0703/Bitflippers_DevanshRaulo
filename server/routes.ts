@@ -70,6 +70,31 @@ EXPLANATION: [your brief explanation]`;
     }
   });
 
+  // New resource management routes
+  app.get("/api/resources", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    const resources = await storage.getResources();
+    res.json(resources);
+  });
+
+  app.post("/api/resources", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.sendStatus(401);
+    }
+    const resource = await storage.createResource(req.body);
+    res.json(resource);
+  });
+
+  app.patch("/api/resources/:id/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.sendStatus(401);
+    }
+    const resource = await storage.updateResourceStatus(parseInt(req.params.id), req.body.status);
+    res.json(resource);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
