@@ -1,20 +1,38 @@
+
 import tt from '@tomtom-international/web-sdk-maps';
 
 export function initializeMap(container: string, center: [number, number]) {
   // Make sure the element exists before initializing
   const element = document.getElementById(container);
   if (!element) {
+    console.error(`Map container element with id '${container}' not found`);
     throw new Error(`Map container element with id '${container}' not found`);
   }
 
-  const map = tt.map({
-    key: import.meta.env.VITE_TOMTOM_API_KEY || "default_key",
-    container,
-    center,
-    zoom: 13
-  });
+  const apiKey = import.meta.env.VITE_TOMTOM_API_KEY;
+  if (!apiKey || apiKey === 'default_key') {
+    console.warn('TomTom API key is not set or is using the default value. Map functionality may be limited.');
+  }
 
-  return map;
+  try {
+    const map = tt.map({
+      key: apiKey || "default_key",
+      container,
+      center,
+      zoom: 13,
+      stylesVisibility: {
+        map: true,
+        poi: true,
+        trafficFlow: true,
+        trafficIncidents: true
+      }
+    });
+
+    return map;
+  } catch (error) {
+    console.error('Failed to initialize TomTom map:', error);
+    throw error;
+  }
 }
 
 export async function getCurrentLocation(): Promise<[number, number]> {
@@ -29,8 +47,11 @@ export async function getCurrentLocation(): Promise<[number, number]> {
         resolve([position.coords.longitude, position.coords.latitude]);
       },
       (error) => {
-        reject(error);
-      }
+        console.error('Error getting current location:', error);
+        // Default to New York coordinates if geolocation fails
+        resolve([-73.935242, 40.730610]);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
     );
   });
 }

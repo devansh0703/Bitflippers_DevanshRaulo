@@ -29,19 +29,34 @@ export default function DoctorDashboard() {
   useEffect(() => {
     if (mapRef.current && !map) {
       // Set a fixed ID for the map container
-      mapRef.current.id = 'map-container';
-      try {
-        const newMap = initializeMap('map-container', [-73.935242, 40.730610]);
-        setMap(newMap);
-      } catch (error) {
-        console.error('Error initializing map:', error);
-      }
+      const mapContainerId = 'map-container';
+      mapRef.current.id = mapContainerId;
+      
+      // Make sure the container has dimensions
+      mapRef.current.style.width = '100%';
+      mapRef.current.style.height = '500px';
+      
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        try {
+          // Default to New York coordinates
+          const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
+          setMap(newMap);
+          console.log('TomTom map initialized successfully');
+        } catch (error) {
+          console.error('Error initializing map:', error);
+        }
+      }, 100);
     }
 
     // Cleanup
     return () => {
       if (map) {
-        map.remove();
+        try {
+          map.remove();
+        } catch (e) {
+          console.error('Error removing map:', e);
+        }
       }
     };
   }, [mapRef, map]);
