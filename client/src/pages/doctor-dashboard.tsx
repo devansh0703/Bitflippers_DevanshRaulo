@@ -23,13 +23,18 @@ export default function DoctorDashboard() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-  useEffect(() => {
-    if (mapRef.current && !map) {
-      // Initialize with a default center
-      const newMap = initializeMap(mapRef.current, [-73.935242, 40.730610]);
-      setMap(newMap);
+useEffect(() => {
+  if (mapRef.current && !map) {
+    const mapContainer = mapRef.current;
+    const newMap = initializeMap(mapContainer.id || 'map', [-73.935242, 40.730610]);
+    setMap(newMap);
+
+    // Add id if not present
+    if (!mapContainer.id) {
+      mapContainer.id = 'map';
     }
-  }, [mapRef, map]);
+  }
+}, [mapRef, map]);
 
   useEffect(() => {
     if (map && reports) {
