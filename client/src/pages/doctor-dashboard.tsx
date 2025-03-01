@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NavBar } from "@/components/nav-bar";
+import { vitalSignThresholds, analyzeVitalSigns } from "@/lib/vital-signs";
 
 export default function DoctorDashboard() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -102,6 +103,26 @@ export default function DoctorDashboard() {
     }
   };
 
+  const renderVitalSignWarnings = (report: Report) => {
+    const warnings = analyzeVitalSigns(report);
+    if (warnings.length === 0) return null;
+
+    return (
+      <div className="mt-4 space-y-2">
+        <h4 className="font-medium text-sm text-destructive">Critical Conditions Detected:</h4>
+        <div className="space-y-1">
+          {warnings.map((warning, index) => (
+            <div key={index} className="flex items-center gap-2 text-sm text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              <span>{warning.message}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -187,6 +208,9 @@ export default function DoctorDashboard() {
                               {report.triageAssessment?.severity || "Pending"}
                             </Badge>
                           </div>
+
+                          {/* Critical Condition Warnings */}
+                          {renderVitalSignWarnings(report)}
 
                           <Tabs defaultValue="assessment">
                             <TabsList className="w-full">
