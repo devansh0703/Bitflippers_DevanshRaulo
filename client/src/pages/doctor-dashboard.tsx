@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NavBar } from "@/components/nav-bar";
 
 export default function DoctorDashboard() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -111,6 +112,7 @@ export default function DoctorDashboard() {
 
   return (
     <div className="min-h-screen bg-background">
+      <NavBar />
       <div className="container mx-auto p-6">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Map Section */}
