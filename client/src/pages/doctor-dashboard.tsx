@@ -1,18 +1,105 @@
 import { useQuery } from "@tanstack/react-query";
-import { Report } from "@shared/schema";
+import { Report, Patient } from "@shared/schema";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+// EHR Patient History Component
+function EhrPatientHistory({ patientId }: { patientId: number }) {
+  const { data: patient, isLoading } = useQuery<Patient>({
+    queryKey: ["/api/ehr/patients", patientId],
+    queryFn: async () => {
+      const res = await apiRequest("GET", `/api/ehr/patients/${patientId}`);
+      return res.json();
+    }
+  });
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-border" />
+      </div>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">
+        <p>Could not retrieve patient record</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="border rounded-md p-4 bg-muted/30">
+        <h3 className="font-semibold mb-2">Patient Demographics</h3>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <div><span className="font-medium">Name:</span> {patient.name}</div>
+          <div><span className="font-medium">Medical Record #:</span> {patient.medicalRecordNumber}</div>
+          <div><span className="font-medium">Age:</span> {patient.age}</div>
+          <div><span className="font-medium">Gender:</span> {patient.gender}</div>
+          <div><span className="font-medium">Blood Type:</span> {patient.bloodType}</div>
+          <div className="col-span-2">
+            <span className="font-medium">Allergies:</span> {patient.allergies || "None documented"}
+          </div>
+        </div>
+      </div>
+      
+      <div>
+        <h3 className="font-semibold mb-2">Medical History</h3>
+        <p className="text-sm mb-4">{patient.medicalHistory}</p>
+        
+        <h3 className="font-semibold mb-2">Current Medications</h3>
+        <p className="text-sm mb-4">{patient.medications}</p>
+      </div>
+      
+      <div>
+        <h3 className="font-semibold mb-3 flex items-center gap-2">
+          <Calendar className="h-4 w-4" />
+          Visit History
+        </h3>
+        
+        {patient.recentVisits.length > 0 ? (
+          <div className="space-y-4">
+            {patient.recentVisits.map((visit, index) => (
+              <Card key={index} className="border">
+                <CardContent className="p-4">
+                  <div className="flex justify-between mb-2">
+                    <div className="font-medium">{visit.date}</div>
+                    <Badge variant="outline">{visit.diagnosis.includes("Immediate") || visit.diagnosis.includes("Urgent") ? "Urgent" : "Routine"}</Badge>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div><span className="font-medium">Reason:</span> {visit.reason}</div>
+                    <div><span className="font-medium">Diagnosis:</span> {visit.diagnosis}</div>
+                    <div><span className="font-medium">Treatment:</span> {visit.treatment}</div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-4 text-muted-foreground">
+            <p>No previous visits recorded</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 import { useEffect, useRef, useState } from "react";
 import { initializeMap } from "@/lib/tomtom";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp } from "lucide-react";
+import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp, Database, Calendar } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NavBar } from "@/components/nav-bar";
 import { vitalSignThresholds, analyzeVitalSigns } from "@/lib/vital-signs";
 import { ResourceDashboard } from "@/components/resource-dashboard";
+import { apiRequest } from "@/lib/queryClient";
 
 export default function DoctorDashboard() {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -268,6 +355,7 @@ export default function DoctorDashboard() {
                                 <TabsTrigger value="vitals">Vitals</TabsTrigger>
                                 <TabsTrigger value="details">Patient Details</TabsTrigger>
                                 <TabsTrigger value="treatment">Treatment</TabsTrigger>
+                                {report.ehrPatientId && <TabsTrigger value="ehr">EHR History</TabsTrigger>}
                               </TabsList>
 
                               <TabsContent value="assessment" className="mt-4">
@@ -373,8 +461,30 @@ export default function DoctorDashboard() {
                                   {report.currentMedications && (
                                     <p><strong>Current Medications:</strong> {report.currentMedications}</p>
                                   )}
+                                  {report.ehrPatientId && (
+                                    <div className="pt-2">
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => {
+                                          const tab = document.querySelector('[data-value="ehr"]') as HTMLElement;
+                                          if (tab) tab.click();
+                                        }}
+                                        className="flex items-center gap-2"
+                                      >
+                                        <Database className="h-4 w-4" />
+                                        View complete EHR history
+                                      </Button>
+                                    </div>
+                                  )}
                                 </div>
                               </TabsContent>
+                              
+                              {report.ehrPatientId && (
+                                <TabsContent value="ehr" className="mt-4">
+                                  <EhrPatientHistory patientId={report.ehrPatientId} />
+                                </TabsContent>
+                              )}
                             </Tabs>
 
                             <div className="mt-4 flex items-center text-sm text-muted-foreground">

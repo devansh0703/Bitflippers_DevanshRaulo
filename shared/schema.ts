@@ -27,6 +27,7 @@ export const reports = pgTable("reports", {
   location: jsonb("location").notNull(), // { lat: number, lon: number }
   triageAssessment: jsonb("triage_assessment"), // { severity: string, explanation: string }
   treatment: jsonb("treatment"), // { medications: string, interventions: string, approved: boolean }
+  ehrPatientId: integer("ehr_patient_id"), // ID of the patient in the EHR system if pre-existing
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -39,6 +40,27 @@ export const resources = pgTable("resources", {
   location: jsonb("location"), // For mobile resources like ambulances
   lastUpdated: timestamp("last_updated").notNull().defaultNow(),
 });
+
+// Type definitions for EHR system integration
+export interface PatientVisit {
+  date: string;
+  reason: string;
+  diagnosis: string;
+  treatment: string;
+}
+
+export interface Patient {
+  id: number;
+  medicalRecordNumber: string;
+  name: string;
+  age: number;
+  gender: string;
+  bloodType: string;
+  allergies: string;
+  medicalHistory: string;
+  medications: string;
+  recentVisits: PatientVisit[];
+}
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
@@ -62,6 +84,11 @@ export const insertReportSchema = createInsertSchema(reports).pick({
   location: true,
 });
 
+// Extended report schema that includes EHR patient ID
+export const insertReportWithEhrSchema = insertReportSchema.extend({
+  ehrPatientId: z.number().optional()
+});
+
 export const insertResourceSchema = createInsertSchema(resources).pick({
   type: true,
   status: true,
@@ -73,5 +100,6 @@ export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type Report = typeof reports.$inferSelect;
 export type InsertReport = z.infer<typeof insertReportSchema>;
+export type InsertReportWithEhr = z.infer<typeof insertReportWithEhrSchema>;
 export type Resource = typeof resources.$inferSelect;
 export type InsertResource = z.infer<typeof insertResourceSchema>;

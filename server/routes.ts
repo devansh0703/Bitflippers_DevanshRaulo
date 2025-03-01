@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
+import { ehrService } from "./ehr";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "default_key");
@@ -178,7 +179,47 @@ INTERVENTIONS:
     };
 
     const updatedReport = await storage.updateReportTreatment(reportId, updatedTreatment);
+    
+    // If report is linked to an EHR patient, update the patient record
+    if (report.ehrPatientId) {
+      ehrService.addEncounter(report.ehrPatientId, updatedReport);
+    }
+    
     res.json(updatedReport);
+  });
+  
+  // EHR API Endpoints
+  
+  // Get all patients (limited data for search)
+  app.get("/api/ehr/patients", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    
+    const query = req.query.q as string;
+    if (query) {
+      const results = ehrService.searchPatients(query);
+      return res.json(results);
+    }
+    
+    const patients = ehrService.getAllPatients();
+    res.json(patients);
+  });
+  
+  // Get patient details by ID
+  app.get("/api/ehr/patients/:id", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.sendStatus(401);
+    }
+    
+    const patientId = parseInt(req.params.id);
+    const patient = ehrService.getPatientById(patientId);
+    
+    if (!patient) {
+      return res.status(404).json({ message: "Patient not found" });
+    }
+    
+    res.json(patient);
   });
 
   const httpServer = createServer(app);

@@ -75,14 +75,15 @@ export class MemStorage implements IStorage {
     return user;
   }
 
-  async createReport(paramedicId: number, insertReport: InsertReport): Promise<Report> {
+  async createReport(paramedicId: number, insertReport: InsertReportWithEhr): Promise<Report> {
     const id = this.currentReportId++;
     const report: Report = {
       ...insertReport,
       id,
       paramedicId,
       triageAssessment: null,
-      treatment: null, //Added to store treatment information
+      treatment: null,
+      ehrPatientId: insertReport.ehrPatientId || null,
       createdAt: new Date(),
     };
     this.reports.set(id, report);

@@ -1,6 +1,6 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { insertReportSchema } from "@shared/schema";
+import { insertReportWithEhrSchema, Patient } from "@shared/schema";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { getCurrentLocation } from "@/lib/tomtom";
@@ -12,13 +12,17 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertTriangle, Clock, ThumbsUp } from "lucide-react";
+import { AlertTriangle, Clock, ThumbsUp, Search, User, Database } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NavBar } from "@/components/nav-bar";
+import { useState } from "react";
 
 export default function ParamedicForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [patientSource, setPatientSource] = useState<"new" | "existing">("new");
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
 
   // Query for all reports for this paramedic
   const { data: reports } = useQuery({
@@ -26,8 +30,43 @@ export default function ParamedicForm() {
     refetchInterval: 2000, // Refresh every 2 seconds to get assessment update
   });
 
+  // Query for EHR patients
+  const { data: ehrPatients, isLoading: loadingPatients } = useQuery({
+    queryKey: ["/api/ehr/patients", searchQuery],
+    queryFn: async () => {
+      const endpoint = searchQuery 
+        ? `/api/ehr/patients?q=${encodeURIComponent(searchQuery)}` 
+        : "/api/ehr/patients";
+      const res = await apiRequest("GET", endpoint);
+      return res.json();
+    },
+    enabled: patientSource === "existing"
+  });
+
+  // Query for selected patient details
+  const { data: selectedPatient } = useQuery({
+    queryKey: ["/api/ehr/patients", selectedPatientId],
+    queryFn: async () => {
+      if (!selectedPatientId) return null;
+      const res = await apiRequest("GET", `/api/ehr/patients/${selectedPatientId}`);
+      return res.json();
+    },
+    enabled: !!selectedPatientId,
+    onSuccess: (patient: Patient) => {
+      if (patient) {
+        // Pre-fill form with patient data
+        form.setValue("patientName", patient.name);
+        form.setValue("patientAge", patient.age);
+        form.setValue("patientGender", patient.gender);
+        form.setValue("allergies", patient.allergies);
+        form.setValue("medicalHistory", patient.medicalHistory);
+        form.setValue("currentMedications", patient.medications);
+      }
+    }
+  });
+
   const form = useForm({
-    resolver: zodResolver(insertReportSchema),
+    resolver: zodResolver(insertReportWithEhrSchema),
     defaultValues: {
       patientName: "",
       patientAge: 0,
@@ -41,7 +80,8 @@ export default function ParamedicForm() {
       medicalHistory: "",
       allergies: "",
       currentMedications: "",
-      location: { lat: 0, lon: 0 }
+      location: { lat: 0, lon: 0 },
+      ehrPatientId: undefined
     }
   });
 
@@ -56,7 +96,9 @@ export default function ParamedicForm() {
         respiratoryRate: Number(data.respiratoryRate),
         oxygenSaturation: Number(data.oxygenSaturation),
         temperature: Number(data.temperature),
-        location: { lat: location[1], lon: location[0] }
+        location: { lat: location[1], lon: location[0] },
+        // Add EHR patient ID if using existing patient
+        ehrPatientId: patientSource === "existing" && selectedPatientId ? selectedPatientId : undefined
       };
 
       const res = await apiRequest("POST", "/api/reports", reportData);
@@ -69,6 +111,8 @@ export default function ParamedicForm() {
         description: "The report has been sent for AI triage assessment"
       });
       form.reset();
+      setSelectedPatientId(null);
+      setPatientSource("new");
     },
     onError: (error: Error) => {
       toast({
@@ -226,6 +270,97 @@ export default function ParamedicForm() {
               <CardTitle>Patient Report Form</CardTitle>
             </CardHeader>
             <CardContent>
+              <div className="mb-6">
+                <div className="flex items-center space-x-2 mb-4">
+                  <div className="text-sm font-medium">Patient Source:</div>
+                  <Button 
+                    type="button" 
+                    variant={patientSource === "new" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPatientSource("new")}
+                    className="flex items-center gap-2"
+                  >
+                    <User className="h-4 w-4" />
+                    New Patient
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant={patientSource === "existing" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setPatientSource("existing")}
+                    className="flex items-center gap-2"
+                  >
+                    <Database className="h-4 w-4" />
+                    From EHR
+                  </Button>
+                </div>
+                
+                {patientSource === "existing" && (
+                  <div className="space-y-4 p-4 border rounded-md">
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search patients by name or MRN..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="h-48 overflow-y-auto border rounded-md p-2">
+                      {loadingPatients ? (
+                        <div className="flex justify-center items-center h-full text-muted-foreground">
+                          Loading patients...
+                        </div>
+                      ) : ehrPatients?.length > 0 ? (
+                        <div className="space-y-2">
+                          {ehrPatients.map((patient: any) => (
+                            <div 
+                              key={patient.id}
+                              className={`p-2 cursor-pointer rounded-md ${selectedPatientId === patient.id ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted'}`}
+                              onClick={() => setSelectedPatientId(patient.id)}
+                            >
+                              <div className="font-medium">{patient.name}</div>
+                              <div className="text-sm text-muted-foreground">
+                                MRN: {patient.medicalRecordNumber} • {patient.age} y/o {patient.gender}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex justify-center items-center h-full text-muted-foreground">
+                          {searchQuery ? "No matching patients found" : "No patients available"}
+                        </div>
+                      )}
+                    </div>
+                    
+                    {selectedPatient && (
+                      <div className="bg-muted/50 p-3 rounded-md">
+                        <h4 className="font-medium mb-2">Selected Patient Information</h4>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div><span className="font-medium">Name:</span> {selectedPatient.name}</div>
+                          <div><span className="font-medium">MRN:</span> {selectedPatient.medicalRecordNumber}</div>
+                          <div><span className="font-medium">Age:</span> {selectedPatient.age}</div>
+                          <div><span className="font-medium">Gender:</span> {selectedPatient.gender}</div>
+                          <div><span className="font-medium">Blood Type:</span> {selectedPatient.bloodType}</div>
+                          <div className="col-span-2">
+                            <span className="font-medium">Allergies:</span> {selectedPatient.allergies}
+                          </div>
+                          <div className="col-span-2">
+                            <span className="font-medium">Medical History:</span> {selectedPatient.medicalHistory}
+                          </div>
+                          <div className="col-span-2">
+                            <span className="font-medium">Medications:</span> {selectedPatient.medications}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(data => submitMutation.mutate(data))} className="space-y-4">
                   <FormField
@@ -235,7 +370,7 @@ export default function ParamedicForm() {
                       <FormItem>
                         <FormLabel>Patient Name</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} readOnly={patientSource === "existing" && !!selectedPatient} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -376,7 +511,7 @@ export default function ParamedicForm() {
                       <FormItem>
                         <FormLabel>Medical History</FormLabel>
                         <FormControl>
-                          <Textarea {...field} />
+                          <Textarea {...field} readOnly={patientSource === "existing" && !!selectedPatient} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -390,7 +525,7 @@ export default function ParamedicForm() {
                       <FormItem>
                         <FormLabel>Allergies</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} readOnly={patientSource === "existing" && !!selectedPatient} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -404,7 +539,7 @@ export default function ParamedicForm() {
                       <FormItem>
                         <FormLabel>Current Medications</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} readOnly={patientSource === "existing" && !!selectedPatient} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
