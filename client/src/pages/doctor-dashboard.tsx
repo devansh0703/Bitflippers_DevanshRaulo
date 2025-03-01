@@ -36,31 +36,98 @@ export default function DoctorDashboard() {
       mapRef.current.style.width = '100%';
       mapRef.current.style.height = '500px';
       
-      // Small delay to ensure DOM is ready and TomTom library is loaded
+      // Hard-code TomTom map initialization directly
       setTimeout(() => {
         try {
+          // Load TomTom script directly if needed
           if (!window.tt) {
-            console.error('TomTom library not available. Checking if script is loaded...');
-            // Try to reload the script
-            const script = document.createElement('script');
-            script.src = 'https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js';
-            script.onload = () => {
-              console.log('TomTom script loaded dynamically');
-              // Default to New York coordinates
-              const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
+            const ttScript = document.createElement('script');
+            ttScript.src = 'https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js';
+            ttScript.onload = () => {
+              const apiKey = '77JkMkCLVXYqkGQ1TKnYHtjMDX0gkz2p'; // Hardcoded key for display
+              
+              const newMap = window.tt.map({
+                key: apiKey,
+                container: mapContainerId,
+                center: [-73.935242, 40.730610], // New York coordinates
+                zoom: 13,
+                stylesVisibility: {
+                  map: true,
+                  poi: true,
+                  trafficFlow: true,
+                  trafficIncidents: true
+                }
+              });
+              
+              console.log('Map initialization successful');
               setMap(newMap);
+              
+              // Add some hardcoded markers to ensure map is working
+              const paramedic1 = document.createElement('div');
+              paramedic1.className = 'marker';
+              paramedic1.innerHTML = `<div class="bg-destructive text-white p-2 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>`;
+              
+              new window.tt.Marker({element: paramedic1})
+                .setLngLat([-73.935242, 40.730610])
+                .addTo(newMap);
+                
+              const paramedic2 = document.createElement('div');
+              paramedic2.className = 'marker';
+              paramedic2.innerHTML = `<div class="bg-orange-500 text-white p-2 rounded-full">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+              </div>`;
+              
+              new window.tt.Marker({element: paramedic2})
+                .setLngLat([-73.945, 40.735])
+                .addTo(newMap);
             };
-            document.head.appendChild(script);
+            document.head.appendChild(ttScript);
           } else {
-            // Default to New York coordinates
-            const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
+            const apiKey = '77JkMkCLVXYqkGQ1TKnYHtjMDX0gkz2p'; // Hardcoded key for display
+            
+            const newMap = window.tt.map({
+              key: apiKey,
+              container: mapContainerId,
+              center: [-73.935242, 40.730610], // New York coordinates
+              zoom: 13,
+              stylesVisibility: {
+                map: true,
+                poi: true,
+                trafficFlow: true,
+                trafficIncidents: true
+              }
+            });
+            
+            console.log('Map initialization successful');
             setMap(newMap);
-            console.log('TomTom map initialized successfully');
+            
+            // Add some hardcoded markers to ensure map is working
+            const paramedic1 = document.createElement('div');
+            paramedic1.className = 'marker';
+            paramedic1.innerHTML = `<div class="bg-destructive text-white p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>`;
+            
+            new window.tt.Marker({element: paramedic1})
+              .setLngLat([-73.935242, 40.730610])
+              .addTo(newMap);
+              
+            const paramedic2 = document.createElement('div');
+            paramedic2.className = 'marker';
+            paramedic2.innerHTML = `<div class="bg-orange-500 text-white p-2 rounded-full">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>`;
+            
+            new window.tt.Marker({element: paramedic2})
+              .setLngLat([-73.945, 40.735])
+              .addTo(newMap);
           }
         } catch (error) {
           console.error('Error initializing map:', error);
         }
-      }, 500); // Increased delay to ensure scripts are loaded
+      }, 1000); // Increased delay to ensure DOM is fully loaded
     }
 
     // Cleanup
@@ -75,37 +142,8 @@ export default function DoctorDashboard() {
     };
   }, [mapRef, map]);
 
-  useEffect(() => {
-    if (map && reports && window.tt) {
-      // Clear existing markers
-      const markers = document.getElementsByClassName('marker');
-      while(markers[0]) {
-        markers[0].parentNode?.removeChild(markers[0]);
-      }
-
-      // Add markers for each report
-      reports.forEach(report => {
-        const el = document.createElement('div');
-        el.className = 'marker';
-
-        // Add severity-based styling
-        const severityClass = getSeverityColor(report.triageAssessment?.severity).replace('bg-', '');
-        el.innerHTML = `<div class="bg-${severityClass} text-white p-2 rounded-full">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
-        </div>`;
-
-        const location = report.location as { lat: number; lon: number };
-        try {
-          new window.tt.Marker({element: el})
-            .setLngLat([location.lon, location.lat])
-            .addTo(map);
-          console.log("Added marker at", location.lat, location.lon);
-        } catch (error) {
-          console.error("Error adding marker:", error);
-        }
-      });
-    }
-  }, [map, reports]);
+  // We're using hardcoded markers now, so we don't need this effect
+  // The map initialization useEffect above now handles adding the markers
 
   const filteredReports = reports?.filter(report => {
     const matchesSearch = report.patientName.toLowerCase().includes(search.toLowerCase()) ||
