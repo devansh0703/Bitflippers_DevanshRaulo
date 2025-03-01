@@ -1,5 +1,10 @@
 
-import tt from '@tomtom-international/web-sdk-maps';
+// Use the globally loaded TomTom script
+declare global {
+  interface Window {
+    tt: any;
+  }
+}
 
 export function initializeMap(container: string, center: [number, number]) {
   // Make sure the element exists before initializing
@@ -15,7 +20,12 @@ export function initializeMap(container: string, center: [number, number]) {
   }
 
   try {
-    const map = tt.map({
+    if (!window.tt) {
+      console.error('TomTom library not loaded. Make sure the script is included in your HTML.');
+      throw new Error('TomTom library not loaded');
+    }
+
+    const map = window.tt.map({
       key: apiKey || "default_key",
       container,
       center,
@@ -28,6 +38,7 @@ export function initializeMap(container: string, center: [number, number]) {
       }
     });
 
+    console.log('Map initialization successful');
     return map;
   } catch (error) {
     console.error('Failed to initialize TomTom map:', error);

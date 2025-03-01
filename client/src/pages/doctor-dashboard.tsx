@@ -62,7 +62,7 @@ export default function DoctorDashboard() {
   }, [mapRef, map]);
 
   useEffect(() => {
-    if (map && reports) {
+    if (map && reports && window.tt) {
       // Clear existing markers
       const markers = document.getElementsByClassName('marker');
       while(markers[0]) {
@@ -81,9 +81,14 @@ export default function DoctorDashboard() {
         </div>`;
 
         const location = report.location as { lat: number; lon: number };
-        new tt.Marker({element: el})
-          .setLngLat([location.lon, location.lat])
-          .addTo(map);
+        try {
+          new window.tt.Marker({element: el})
+            .setLngLat([location.lon, location.lat])
+            .addTo(map);
+          console.log("Added marker at", location.lat, location.lon);
+        } catch (error) {
+          console.error("Error adding marker:", error);
+        }
       });
     }
   }, [map, reports]);
