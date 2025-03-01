@@ -6,17 +6,15 @@ declare global {
   }
 }
 
+// Hardcoded API key for simplicity
+const API_KEY = '77JkMkCLVXYqkGQ1TKnYHtjMDX0gkz2p';
+
 export function initializeMap(container: string, center: [number, number]) {
   // Make sure the element exists before initializing
   const element = document.getElementById(container);
   if (!element) {
     console.error(`Map container element with id '${container}' not found`);
     throw new Error(`Map container element with id '${container}' not found`);
-  }
-
-  const apiKey = import.meta.env.VITE_TOMTOM_API_KEY;
-  if (!apiKey || apiKey === 'default_key') {
-    console.warn('TomTom API key is not set or is using the default value. Map functionality may be limited.');
   }
 
   try {
@@ -26,7 +24,7 @@ export function initializeMap(container: string, center: [number, number]) {
     }
 
     const map = window.tt.map({
-      key: apiKey || "default_key",
+      key: API_KEY,
       container,
       center,
       zoom: 13,
@@ -38,7 +36,7 @@ export function initializeMap(container: string, center: [number, number]) {
       }
     });
 
-    console.log('Map initialization successful');
+    console.log('Map initialization successful with API key');
     return map;
   } catch (error) {
     console.error('Failed to initialize TomTom map:', error);
@@ -65,4 +63,27 @@ export async function getCurrentLocation(): Promise<[number, number]> {
       { timeout: 10000, enableHighAccuracy: true }
     );
   });
+}
+
+// Calculate route between two points using TomTom API
+export async function calculateRoute(
+  startLat: number, 
+  startLng: number, 
+  endLat: number, 
+  endLng: number
+) {
+  const url = `https://api.tomtom.com/routing/1/calculateRoute/${startLat},${startLng}:${endLat},${endLng}/json?key=${API_KEY}&traffic=true`;
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`TomTom API error: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error calculating route:', error);
+    throw error;
+  }
 }
