@@ -26,6 +26,7 @@ export const reports = pgTable("reports", {
   currentMedications: text("current_medications"),
   location: jsonb("location").notNull(), // { lat: number, lon: number }
   triageAssessment: jsonb("triage_assessment"), // { severity: string, explanation: string }
+  treatment: jsonb("treatment"), // { medications: string, interventions: string, approved: boolean }
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

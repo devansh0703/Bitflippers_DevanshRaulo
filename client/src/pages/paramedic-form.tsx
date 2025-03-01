@@ -140,6 +140,31 @@ export default function ParamedicForm() {
                         </p>
                       </div>
 
+                      {latestReport.treatment && latestReport.treatment.approved && (
+                        <div className="rounded-lg bg-green-50 border border-green-200 p-4">
+                          <h4 className="font-medium mb-2 text-green-700 flex items-center gap-2">
+                            <ThumbsUp className="h-4 w-4" />
+                            Doctor-Approved Treatment Plan
+                          </h4>
+                          
+                          <div className="space-y-3">
+                            <div>
+                              <h5 className="text-sm font-semibold">Medications:</h5>
+                              <p className="text-sm whitespace-pre-wrap">
+                                {latestReport.treatment.medications}
+                              </p>
+                            </div>
+                            
+                            <div>
+                              <h5 className="text-sm font-semibold">Interventions:</h5>
+                              <p className="text-sm whitespace-pre-wrap">
+                                {latestReport.treatment.interventions}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="font-medium">Vitals:</span>

@@ -267,6 +267,7 @@ export default function DoctorDashboard() {
                                 <TabsTrigger value="assessment">AI Assessment</TabsTrigger>
                                 <TabsTrigger value="vitals">Vitals</TabsTrigger>
                                 <TabsTrigger value="details">Patient Details</TabsTrigger>
+                                <TabsTrigger value="treatment">Treatment</TabsTrigger>
                               </TabsList>
 
                               <TabsContent value="assessment" className="mt-4">
@@ -281,6 +282,72 @@ export default function DoctorDashboard() {
                                   <p className="text-sm text-muted-foreground">
                                     AI assessment pending...
                                   </p>
+                                )}
+                              </TabsContent>
+                              
+                              <TabsContent value="treatment" className="mt-4">
+                                {report.treatment ? (
+                                  <div className="space-y-4">
+                                    <div className="rounded-md bg-muted p-3">
+                                      <h4 className="font-medium mb-2">Recommended Medications:</h4>
+                                      <p className="text-sm whitespace-pre-wrap">
+                                        {report.treatment.medications}
+                                      </p>
+                                    </div>
+                                    
+                                    <div className="rounded-md bg-muted p-3">
+                                      <h4 className="font-medium mb-2">Suggested Interventions:</h4>
+                                      <p className="text-sm whitespace-pre-wrap">
+                                        {report.treatment.interventions}
+                                      </p>
+                                    </div>
+                                    
+                                    {report.treatment.approved ? (
+                                      <div className="flex items-center gap-2 text-sm text-green-500">
+                                        <ThumbsUp className="h-4 w-4" />
+                                        <span>Treatment approved and sent to paramedic</span>
+                                      </div>
+                                    ) : (
+                                      <Button 
+                                        onClick={() => {
+                                          fetch(`/api/reports/${report.id}/treatment/approve`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' }
+                                          })
+                                          .then(res => res.json())
+                                          .then(() => {
+                                            // Refetch reports to update UI
+                                            window.location.reload();
+                                          });
+                                        }}
+                                        className="w-full"
+                                      >
+                                        Approve and Send to Paramedic
+                                      </Button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="space-y-4">
+                                    <p className="text-sm text-muted-foreground">
+                                      No treatment recommendations generated yet.
+                                    </p>
+                                    <Button
+                                      onClick={() => {
+                                        fetch(`/api/reports/${report.id}/treatment`, {
+                                          method: 'POST',
+                                          headers: { 'Content-Type': 'application/json' }
+                                        })
+                                        .then(res => res.json())
+                                        .then(() => {
+                                          // Refetch reports to update UI
+                                          window.location.reload();
+                                        });
+                                      }}
+                                      className="w-full"
+                                    >
+                                      Generate Treatment Recommendations
+                                    </Button>
+                                  </div>
                                 )}
                               </TabsContent>
 

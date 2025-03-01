@@ -15,6 +15,7 @@ export interface IStorage {
   getResources(): Promise<Resource[]>;
   createResource(resource: InsertResource): Promise<Resource>;
   updateResourceStatus(id: number, status: string): Promise<Resource>;
+  updateReportTreatment(reportId: number, treatmentData: any): Promise<Report>;
   sessionStore: session.Store;
 }
 
@@ -81,6 +82,7 @@ export class MemStorage implements IStorage {
       id,
       paramedicId,
       triageAssessment: null,
+      treatment: null, //Added to store treatment information
       createdAt: new Date(),
     };
     this.reports.set(id, report);
@@ -130,6 +132,14 @@ export class MemStorage implements IStorage {
     };
     this.resources.set(id, updatedResource);
     return updatedResource;
+  }
+
+  async updateReportTreatment(reportId: number, treatmentData: any): Promise<Report> {
+    const report = await this.getReportById(reportId);
+    if (!report) throw new Error("Report not found");
+    const updatedReport = { ...report, treatment: treatmentData };
+    this.reports.set(reportId, updatedReport);
+    return updatedReport;
   }
 }
 

@@ -95,6 +95,92 @@ EXPLANATION: [your brief explanation]`;
     res.json(resource);
   });
 
+  // Generate treatment recommendation
+  app.post("/api/reports/:id/treatment", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.sendStatus(401);
+    }
+
+    const reportId = parseInt(req.params.id);
+    const report = await storage.getReportById(reportId);
+    
+    if (!report) {
+      return res.status(404).json({ message: "Report not found" });
+    }
+
+    // Process with Gemini
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const prompt = `You are an Emergency Medical Treatment AI assistant. Based on the following patient data, provide:
+1. Recommend medications (list up to 3 specific medications with dosages if applicable)
+2. Suggested interventions or procedures (list 2-3 specific steps for immediate care)
+
+Be precise and medical-professional appropriate in your recommendations.
+
+Patient Data:
+- Age: ${report.patientAge}, Gender: ${report.patientGender}
+- Vitals: HR ${report.heartRate}bpm, BP ${report.bloodPressure}, RR ${report.respiratoryRate}, O2 ${report.oxygenSaturation}%, Temp ${report.temperature}°C
+- Complaints: ${report.complaints}
+- Medical History: ${report.medicalHistory || 'None'}
+- Allergies: ${report.allergies || 'None'}
+- Current Medications: ${report.currentMedications || 'None'}
+- Triage Assessment: ${report.triageAssessment?.severity || 'Not available'} - ${report.triageAssessment?.explanation || 'Not available'}
+
+Format your response in two sections:
+MEDICATIONS:
+[your recommendations]
+
+INTERVENTIONS:
+[your recommendations]`;
+
+    try {
+      const result = await model.generateContent(prompt);
+      const response = result.response.text();
+
+      // Split the response into medications and interventions
+      const medicationsMatch = response.match(/MEDICATIONS:([\s\S]*?)(?=INTERVENTIONS:|$)/i);
+      const interventionsMatch = response.match(/INTERVENTIONS:([\s\S]*)/i);
+
+      const medications = medicationsMatch ? medicationsMatch[1].trim() : "No specific medications recommended.";
+      const interventions = interventionsMatch ? interventionsMatch[1].trim() : "No specific interventions recommended.";
+
+      const treatment = {
+        medications,
+        interventions,
+        approved: false,
+        generatedAt: new Date().toISOString()
+      };
+
+      const updatedReport = await storage.updateReportTreatment(reportId, treatment);
+      res.json(updatedReport);
+    } catch (error) {
+      console.error("Gemini API error:", error);
+      res.status(500).json({ message: "Failed to generate treatment recommendations" });
+    }
+  });
+
+  // Approve treatment
+  app.patch("/api/reports/:id/treatment/approve", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.sendStatus(401);
+    }
+
+    const reportId = parseInt(req.params.id);
+    const report = await storage.getReportById(reportId);
+    
+    if (!report || !report.treatment) {
+      return res.status(404).json({ message: "Report or treatment not found" });
+    }
+
+    const updatedTreatment = {
+      ...report.treatment,
+      approved: true,
+      approvedAt: new Date().toISOString()
+    };
+
+    const updatedReport = await storage.updateReportTreatment(reportId, updatedTreatment);
+    res.json(updatedReport);
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
