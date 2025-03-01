@@ -1,6 +1,12 @@
 import tt from '@tomtom-international/web-sdk-maps';
 
 export function initializeMap(container: string, center: [number, number]) {
+  // Make sure the element exists before initializing
+  const element = document.getElementById(container);
+  if (!element) {
+    throw new Error(`Map container element with id '${container}' not found`);
+  }
+
   const map = tt.map({
     key: import.meta.env.VITE_TOMTOM_API_KEY || "default_key",
     container,

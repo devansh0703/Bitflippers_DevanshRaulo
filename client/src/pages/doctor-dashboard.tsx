@@ -28,14 +28,22 @@ export default function DoctorDashboard() {
 
   useEffect(() => {
     if (mapRef.current && !map) {
-      const mapContainer = mapRef.current;
-      const newMap = initializeMap(mapContainer.id || 'map', [-73.935242, 40.730610]);
-      setMap(newMap);
-
-      if (!mapContainer.id) {
-        mapContainer.id = 'map';
+      // Set a fixed ID for the map container
+      mapRef.current.id = 'map-container';
+      try {
+        const newMap = initializeMap('map-container', [-73.935242, 40.730610]);
+        setMap(newMap);
+      } catch (error) {
+        console.error('Error initializing map:', error);
       }
     }
+
+    // Cleanup
+    return () => {
+      if (map) {
+        map.remove();
+      }
+    };
   }, [mapRef, map]);
 
   useEffect(() => {
