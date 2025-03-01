@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/generative-ai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "default_key");
 
@@ -18,30 +18,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Process with Gemini
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-    const prompt = `You are a medical expert AI Triage, analyze this patient data:
-      Name: ${report.patientName}
-      Age: ${report.patientAge}
-      Gender: ${report.patientGender}
-      Heart Rate: ${report.heartRate} bpm
-      Blood Pressure: ${report.bloodPressure} mmHg
-      Respiratory Rate: ${report.respiratoryRate} breaths/min
-      Oxygen Saturation: ${report.oxygenSaturation}%
-      Temperature: ${report.temperature}°C
-      Complaints: ${report.complaints}
-      Medical History: ${report.medicalHistory}
-      Allergies: ${report.allergies}
-      Current Medications: ${report.currentMedications}
-      
-      Provide severity level (Immediate, Urgent, Delayed) and explanation.`;
+    const prompt = `You are an Emergency Medical Triage AI assistant. Analyze the following patient data and provide ONLY:
+1. A severity level (must be exactly one of: IMMEDIATE, URGENT, or DELAYED)
+2. A brief, clear explanation in 2-3 sentences maximum.
+
+Patient Data:
+- Age: ${report.patientAge}, Gender: ${report.patientGender}
+- Vitals: HR ${report.heartRate}bpm, BP ${report.bloodPressure}, RR ${report.respiratoryRate}, O2 ${report.oxygenSaturation}%, Temp ${report.temperature}°C
+- Complaints: ${report.complaints}
+- Medical History: ${report.medicalHistory || 'None'}
+- Allergies: ${report.allergies || 'None'}
+- Current Medications: ${report.currentMedications || 'None'}
+
+Format your response exactly as:
+SEVERITY: [level]
+EXPLANATION: [your brief explanation]`;
 
     try {
       const result = await model.generateContent(prompt);
       const response = result.response.text();
-      const [severity, ...explanation] = response.split("\n");
-      
+      const [severityLine, explanationLine] = response.split('\n');
+
+      const severity = severityLine.replace('SEVERITY:', '').trim();
+      const explanation = explanationLine.replace('EXPLANATION:', '').trim();
+
       const updatedReport = await storage.updateReportTriage(report.id, {
-        severity: severity.trim(),
-        explanation: explanation.join("\n").trim()
+        severity,
+        explanation
       });
 
       res.json(updatedReport);
@@ -57,7 +60,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     const reports = await storage.getReports();
-    
+
     if (req.user.role === "paramedic") {
       // Filter reports for specific paramedic
       res.json(reports.filter(r => r.paramedicId === req.user.id));

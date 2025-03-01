@@ -1,0 +1,49 @@
+Develop an AI-driven system to improve emergency medical
+response during crises (mass casualty events, disease
+outbreaks) by providing rapid assessment, triage, treatment
+guidance, and optimized resource allocation. The system should
+leverage real-time data and AI to assist medical professionals in
+making faster, more informed decisions, ultimately saving lives.
+Context:
+Crises like disease outbreaks or mass casualty incidents
+overwhelm emergency medical services. Quick and accurate
+triage, diagnosis, and treatment are crucial, but limited
+resources and high patient volumes lead to delays and
+difficulties. AI can augment human capabilities, providing timely
+insights and automating tasks to improve the speed and
+effectiveness of care, even under immense pressure. This
+requires a system adaptable to the chaotic nature of
+emergencies and capable of handling incomplete information.
+Primary Objectives:
+1. AI-Powered Triage
+Create an AI agent that analyzes real-time patient data
+(vitals, symptoms, initial assessments) to automatically
+assign triage priority levels (e.g., immediate, urgent,
+delayed).
+PPRROOBBLLEEMM SSTTAATTEEMMEENNTT 66
+HHEEAALLTTHHCCAARREE
+Use predictive analytics to identify patients at highest risk of
+critical conditions, enabling faster intervention
+Provide a clear visual interface (e.g., dashboard) for responders
+to quickly understand patient status.
+2. Automated Critical Condition Detection
+Develop AI algorithms to analyze medical images (X-rays, CT
+scans) or wearable sensor data (ECG, pulse oximetry) to rapidly
+detect life-threatening conditions (e.g., internal bleeding,
+cardiac arrest, respiratory failure).
+Provide confidence levels with diagnoses to aid human review.
+3. Personalized Treatment Guidance
+Build an AI agent that generates treatment recommendations
+based on patient specifics (demographics, symptoms, medical
+history – if available), drug interactions, and current clinical
+guidelines.
+Offer clear, concise recommendations to medical personnel,
+including medication dosages and suggested interventions.
+4. Resource Allocation Optimization
+Develop a system to simulate patient flow and resource
+availability (ambulances, beds, staff, supplies) during a crisis.
+Use AI to recommend optimal resource allocation strategies,
+minimizing delays and maximizing the number of patients
+treated within critical time windows.
+Visually present the simulation and the AI-recommended
+resource plan. 
