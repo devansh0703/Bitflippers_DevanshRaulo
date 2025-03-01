@@ -8,7 +8,7 @@ import { useEffect, useRef, useState } from "react";
 import { initializeMap } from "@/lib/tomtom";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Search, MapPin } from "lucide-react";
+import { Loader2, Search, MapPin, AlertTriangle, Clock, ThumbsUp } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function DoctorDashboard() {
@@ -23,18 +23,17 @@ export default function DoctorDashboard() {
     refetchInterval: 5000, // Refresh every 5 seconds
   });
 
-useEffect(() => {
-  if (mapRef.current && !map) {
-    const mapContainer = mapRef.current;
-    const newMap = initializeMap(mapContainer.id || 'map', [-73.935242, 40.730610]);
-    setMap(newMap);
+  useEffect(() => {
+    if (mapRef.current && !map) {
+      const mapContainer = mapRef.current;
+      const newMap = initializeMap(mapContainer.id || 'map', [-73.935242, 40.730610]);
+      setMap(newMap);
 
-    // Add id if not present
-    if (!mapContainer.id) {
-      mapContainer.id = 'map';
+      if (!mapContainer.id) {
+        mapContainer.id = 'map';
+      }
     }
-  }
-}, [mapRef, map]);
+  }, [mapRef, map]);
 
   useEffect(() => {
     if (map && reports) {
@@ -48,12 +47,16 @@ useEffect(() => {
       reports.forEach(report => {
         const el = document.createElement('div');
         el.className = 'marker';
-        el.innerHTML = `<div class="bg-primary text-white p-2 rounded-full">
+
+        // Add severity-based styling
+        const severityClass = getSeverityColor(report.triageAssessment?.severity).replace('bg-', '');
+        el.innerHTML = `<div class="bg-${severityClass} text-white p-2 rounded-full">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
         </div>`;
-        
+
+        const location = report.location as { lat: number; lon: number };
         new tt.Marker({element: el})
-          .setLngLat([report.location.lon, report.location.lat])
+          .setLngLat([location.lon, location.lat])
           .addTo(map);
       });
     }
@@ -62,9 +65,9 @@ useEffect(() => {
   const filteredReports = reports?.filter(report => {
     const matchesSearch = report.patientName.toLowerCase().includes(search.toLowerCase()) ||
       report.complaints.toLowerCase().includes(search.toLowerCase());
-    
+
     const matchesSeverity = severityFilter === "all" || 
-      (report.triageAssessment?.severity.toLowerCase() === severityFilter);
+      (report.triageAssessment?.severity?.toLowerCase() === severityFilter);
 
     return matchesSearch && matchesSeverity;
   });
@@ -74,8 +77,8 @@ useEffect(() => {
       return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
     } else {
       const severityOrder = { "immediate": 0, "urgent": 1, "delayed": 2 };
-      const aOrder = severityOrder[a.triageAssessment?.severity.toLowerCase() ?? "delayed"];
-      const bOrder = severityOrder[b.triageAssessment?.severity.toLowerCase() ?? "delayed"];
+      const aOrder = severityOrder[a.triageAssessment?.severity?.toLowerCase() ?? "delayed"] ?? 2;
+      const bOrder = severityOrder[b.triageAssessment?.severity?.toLowerCase() ?? "delayed"] ?? 2;
       return aOrder - bOrder;
     }
   });
@@ -86,6 +89,15 @@ useEffect(() => {
       case "urgent": return "bg-orange-500 text-white";
       case "delayed": return "bg-green-500 text-white";
       default: return "bg-muted text-muted-foreground";
+    }
+  };
+
+  const getSeverityIcon = (severity?: string) => {
+    switch (severity?.toLowerCase()) {
+      case "immediate": return <AlertTriangle className="h-4 w-4" />;
+      case "urgent": return <Clock className="h-4 w-4" />;
+      case "delayed": return <ThumbsUp className="h-4 w-4" />;
+      default: return null;
     }
   };
 
@@ -159,24 +171,44 @@ useEffect(() => {
                     {sortedReports?.map((report) => (
                       <Card key={report.id}>
                         <CardContent className="p-4">
-                          <div className="flex justify-between items-start mb-2">
+                          <div className="flex justify-between items-start mb-4">
                             <div>
-                              <h3 className="font-semibold">{report.patientName}</h3>
+                              <h3 className="font-semibold text-lg">{report.patientName}</h3>
                               <p className="text-sm text-muted-foreground">
                                 {new Date(report.createdAt).toLocaleString()}
                               </p>
                             </div>
-                            <Badge className={getSeverityColor(report.triageAssessment?.severity)}>
+                            <Badge 
+                              className={`flex items-center gap-2 ${getSeverityColor(report.triageAssessment?.severity)}`}
+                            >
+                              {getSeverityIcon(report.triageAssessment?.severity)}
                               {report.triageAssessment?.severity || "Pending"}
                             </Badge>
                           </div>
-                          
-                          <Tabs defaultValue="vitals">
-                            <TabsList>
-                              <TabsTrigger value="vitals">Vitals</TabsTrigger>
+
+                          <Tabs defaultValue="assessment">
+                            <TabsList className="w-full">
                               <TabsTrigger value="assessment">AI Assessment</TabsTrigger>
+                              <TabsTrigger value="vitals">Vitals</TabsTrigger>
+                              <TabsTrigger value="details">Patient Details</TabsTrigger>
                             </TabsList>
-                            <TabsContent value="vitals">
+
+                            <TabsContent value="assessment" className="mt-4">
+                              {report.triageAssessment ? (
+                                <div className="space-y-2">
+                                  <div className="font-medium">Assessment Explanation:</div>
+                                  <p className="text-sm whitespace-pre-wrap">
+                                    {report.triageAssessment.explanation}
+                                  </p>
+                                </div>
+                              ) : (
+                                <p className="text-sm text-muted-foreground">
+                                  AI assessment pending...
+                                </p>
+                              )}
+                            </TabsContent>
+
+                            <TabsContent value="vitals" className="mt-4">
                               <div className="grid grid-cols-2 gap-2 text-sm">
                                 <div>Heart Rate: {report.heartRate} bpm</div>
                                 <div>BP: {report.bloodPressure}</div>
@@ -184,21 +216,29 @@ useEffect(() => {
                                 <div>O2: {report.oxygenSaturation}%</div>
                                 <div>Temp: {report.temperature}°C</div>
                               </div>
-                              <p className="mt-2 text-sm">
-                                <strong>Complaints:</strong> {report.complaints}
-                              </p>
                             </TabsContent>
-                            <TabsContent value="assessment">
-                              <p className="text-sm">
-                                {report.triageAssessment?.explanation || "Assessment pending..."}
-                              </p>
+
+                            <TabsContent value="details" className="mt-4">
+                              <div className="space-y-2 text-sm">
+                                <p><strong>Complaints:</strong> {report.complaints}</p>
+                                {report.medicalHistory && (
+                                  <p><strong>Medical History:</strong> {report.medicalHistory}</p>
+                                )}
+                                {report.allergies && (
+                                  <p><strong>Allergies:</strong> {report.allergies}</p>
+                                )}
+                                {report.currentMedications && (
+                                  <p><strong>Current Medications:</strong> {report.currentMedications}</p>
+                                )}
+                              </div>
                             </TabsContent>
                           </Tabs>
 
-                          <div className="mt-2 flex items-center text-sm text-muted-foreground">
+                          <div className="mt-4 flex items-center text-sm text-muted-foreground">
                             <MapPin className="h-4 w-4 mr-1" />
                             <span>
-                              {report.location.lat.toFixed(4)}, {report.location.lon.toFixed(4)}
+                              {(report.location as { lat: number; lon: number }).lat.toFixed(4)}, 
+                              {(report.location as { lat: number; lon: number }).lon.toFixed(4)}
                             </span>
                           </div>
                         </CardContent>
