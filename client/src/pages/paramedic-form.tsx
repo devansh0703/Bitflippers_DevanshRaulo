@@ -15,9 +15,24 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 export default function ParamedicForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const form = useForm({
     resolver: zodResolver(insertReportSchema),
+    defaultValues: {
+      patientName: "",
+      patientAge: 0,
+      patientGender: "",
+      heartRate: 0,
+      bloodPressure: "",
+      respiratoryRate: 0,
+      oxygenSaturation: 0,
+      temperature: 0,
+      complaints: "",
+      medicalHistory: "",
+      allergies: "",
+      currentMedications: "",
+      location: { lat: 0, lon: 0 }
+    }
   });
 
   const submitMutation = useMutation({
@@ -25,9 +40,15 @@ export default function ParamedicForm() {
       const location = await getCurrentLocation();
       const reportData = {
         ...data,
+        // Convert string inputs to numbers
+        patientAge: Number(data.patientAge),
+        heartRate: Number(data.heartRate),
+        respiratoryRate: Number(data.respiratoryRate),
+        oxygenSaturation: Number(data.oxygenSaturation),
+        temperature: Number(data.temperature),
         location: { lat: location[1], lon: location[0] }
       };
-      
+
       const res = await apiRequest("POST", "/api/reports", reportData);
       return res.json();
     },
@@ -79,7 +100,7 @@ export default function ParamedicForm() {
                     <FormItem>
                       <FormLabel>Age</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -118,7 +139,7 @@ export default function ParamedicForm() {
                     <FormItem>
                       <FormLabel>Heart Rate (BPM)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -148,7 +169,7 @@ export default function ParamedicForm() {
                     <FormItem>
                       <FormLabel>Respiratory Rate</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -162,7 +183,7 @@ export default function ParamedicForm() {
                     <FormItem>
                       <FormLabel>O2 Saturation (%)</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -176,7 +197,7 @@ export default function ParamedicForm() {
                     <FormItem>
                       <FormLabel>Temperature (°C)</FormLabel>
                       <FormControl>
-                        <Input type="number" step="0.1" {...field} />
+                        <Input type="number" step="0.1" {...field} onChange={e => field.onChange(Number(e.target.value))} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
