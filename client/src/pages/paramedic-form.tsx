@@ -88,18 +88,42 @@ export default function ParamedicForm() {
   const submitMutation = useMutation({
     mutationFn: async (data: any) => {
       const location = await getCurrentLocation();
-      const reportData = {
-        ...data,
-        // Convert string inputs to numbers
-        patientAge: Number(data.patientAge),
-        heartRate: Number(data.heartRate),
-        respiratoryRate: Number(data.respiratoryRate),
-        oxygenSaturation: Number(data.oxygenSaturation),
-        temperature: Number(data.temperature),
-        location: { lat: location[1], lon: location[0] },
-        // Add EHR patient ID if using existing patient
-        ehrPatientId: patientSource === "existing" && selectedPatientId ? selectedPatientId : undefined
-      };
+      
+      let reportData;
+      
+      // If using existing patient from EHR, make sure to use their data
+      if (patientSource === "existing" && selectedPatient) {
+        reportData = {
+          ...data,
+          // Use patient data from EHR for demographics
+          patientName: selectedPatient.name,
+          patientAge: selectedPatient.age,
+          patientGender: selectedPatient.gender,
+          // Form-specific data for current condition
+          heartRate: Number(data.heartRate),
+          respiratoryRate: Number(data.respiratoryRate),
+          oxygenSaturation: Number(data.oxygenSaturation),
+          temperature: Number(data.temperature),
+          // Medical history from EHR
+          medicalHistory: selectedPatient.medicalHistory,
+          allergies: selectedPatient.allergies,
+          currentMedications: selectedPatient.medications,
+          // Location and EHR ID
+          location: { lat: location[1], lon: location[0] },
+          ehrPatientId: selectedPatientId
+        };
+      } else {
+        // For new patients, use form data with number conversions
+        reportData = {
+          ...data,
+          patientAge: Number(data.patientAge),
+          heartRate: Number(data.heartRate),
+          respiratoryRate: Number(data.respiratoryRate),
+          oxygenSaturation: Number(data.oxygenSaturation),
+          temperature: Number(data.temperature),
+          location: { lat: location[1], lon: location[0] },
+        };
+      }
 
       const res = await apiRequest("POST", "/api/reports", reportData);
       return res.json();

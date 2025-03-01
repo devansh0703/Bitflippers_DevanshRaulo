@@ -15,6 +15,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.sendStatus(401);
     }
 
+    // For new patients, add them to the EHR system
+    let ehrPatientId = req.body.ehrPatientId;
+    
+    if (!ehrPatientId && req.body.patientName) {
+      // This is a new patient, create an EHR record
+      try {
+        // Create new patient in EHR system
+        const newPatient = ehrService.createPatient({
+          name: req.body.patientName,
+          age: req.body.patientAge,
+          gender: req.body.patientGender,
+          allergies: req.body.allergies || "None documented",
+          medicalHistory: req.body.medicalHistory || "No prior history",
+          medications: req.body.currentMedications || "None",
+          recentVisits: []
+        });
+        
+        // Use this patient ID for the report
+        ehrPatientId = newPatient.id;
+        req.body.ehrPatientId = ehrPatientId;
+      } catch (error) {
+        console.error("Failed to create EHR record:", error);
+        // Continue with report creation even if EHR creation fails
+      }
+    }
+
     const report = await storage.createReport(req.user.id, req.body);
 
     // Process with Gemini

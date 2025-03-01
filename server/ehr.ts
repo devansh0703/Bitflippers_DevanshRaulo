@@ -138,6 +138,31 @@ export class EHRService {
       patient.medicalRecordNumber.toLowerCase().includes(normalizedQuery)
     );
   }
+  
+  // Create a new patient in the EHR system
+  createPatient(patientData: Partial<Patient>): Patient {
+    // Generate a new ID (max existing ID + 1)
+    const newId = Math.max(...ehrPatients.map(p => p.id)) + 1;
+    
+    // Create a new patient record
+    const newPatient: Patient = {
+      id: newId,
+      medicalRecordNumber: patientData.medicalRecordNumber || `MRN${Math.floor(Math.random() * 100000)}`,
+      name: patientData.name || "Unknown Patient",
+      age: patientData.age || 0,
+      gender: patientData.gender || "unknown",
+      bloodType: patientData.bloodType || "Unknown",
+      allergies: patientData.allergies || "None documented",
+      medicalHistory: patientData.medicalHistory || "No prior history",
+      medications: patientData.medications || "None",
+      recentVisits: patientData.recentVisits || []
+    };
+    
+    // Add to our database
+    ehrPatients.push(newPatient);
+    
+    return newPatient;
+  }
 
   // Add a new medical encounter to patient history
   addEncounter(patientId: number, encounter: any): Patient | undefined {
