@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import '@tomtom-international/web-sdk-maps/dist/maps.css';
+// TomTom CSS is imported in index.html
 import App from "./App";
 import "./index.css";
 

@@ -36,17 +36,31 @@ export default function DoctorDashboard() {
       mapRef.current.style.width = '100%';
       mapRef.current.style.height = '500px';
       
-      // Small delay to ensure DOM is ready
+      // Small delay to ensure DOM is ready and TomTom library is loaded
       setTimeout(() => {
         try {
-          // Default to New York coordinates
-          const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
-          setMap(newMap);
-          console.log('TomTom map initialized successfully');
+          if (!window.tt) {
+            console.error('TomTom library not available. Checking if script is loaded...');
+            // Try to reload the script
+            const script = document.createElement('script');
+            script.src = 'https://api.tomtom.com/maps-sdk-for-web/cdn/6.x/6.23.0/maps/maps-web.min.js';
+            script.onload = () => {
+              console.log('TomTom script loaded dynamically');
+              // Default to New York coordinates
+              const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
+              setMap(newMap);
+            };
+            document.head.appendChild(script);
+          } else {
+            // Default to New York coordinates
+            const newMap = initializeMap(mapContainerId, [-73.935242, 40.730610]);
+            setMap(newMap);
+            console.log('TomTom map initialized successfully');
+          }
         } catch (error) {
           console.error('Error initializing map:', error);
         }
-      }, 100);
+      }, 500); // Increased delay to ensure scripts are loaded
     }
 
     // Cleanup
