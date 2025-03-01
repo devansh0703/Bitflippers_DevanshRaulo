@@ -13,13 +13,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { AlertTriangle, Clock, ThumbsUp } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NavBar } from "@/components/nav-bar";
 
 export default function ParamedicForm() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query for latest reports to show the assessment
+  // Query for all reports for this paramedic
   const { data: reports } = useQuery({
     queryKey: ["/api/reports"],
     refetchInterval: 2000, // Refresh every 2 seconds to get assessment update
@@ -78,10 +79,10 @@ export default function ParamedicForm() {
     }
   });
 
-  // Get the latest report for this paramedic
-  const latestReport = reports?.sort((a, b) =>
+  // Sort reports by creation time (newest first)
+  const sortedReports = reports?.sort((a, b) =>
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  )[0];
+  );
 
   const getSeverityColor = (severity?: string) => {
     switch (severity?.toLowerCase()) {
@@ -106,93 +107,118 @@ export default function ParamedicForm() {
       <NavBar />
       <div className="container mx-auto p-8">
         <div className="max-w-2xl mx-auto space-y-6">
-          {/* Latest Report Assessment Card */}
-          {latestReport && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center justify-between">
-                  <span>Latest Assessment</span>
-                  <Badge
-                    className={`flex items-center gap-2 ${getSeverityColor(latestReport.triageAssessment?.severity)}`}
-                  >
-                    {getSeverityIcon(latestReport.triageAssessment?.severity)}
-                    {latestReport.triageAssessment?.severity || "Assessment pending..."}
-                  </Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b pb-4">
-                    <div>
-                      <h3 className="font-semibold text-lg">{latestReport.patientName}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(latestReport.createdAt).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {latestReport.triageAssessment ? (
-                    <div className="space-y-4">
-                      <div className="rounded-lg bg-muted p-4">
-                        <h4 className="font-medium mb-2">AI Assessment</h4>
-                        <p className="text-sm whitespace-pre-wrap">
-                          {latestReport.triageAssessment.explanation}
-                        </p>
-                      </div>
-
-                      {latestReport.treatment && latestReport.treatment.approved && (
-                        <div className="rounded-lg bg-green-50 border border-green-200 p-4">
-                          <h4 className="font-medium mb-2 text-green-700 flex items-center gap-2">
-                            <ThumbsUp className="h-4 w-4" />
-                            Doctor-Approved Treatment Plan
-                          </h4>
-                          
-                          <div className="space-y-3">
-                            <div>
-                              <h5 className="text-sm font-semibold">Medications:</h5>
-                              <p className="text-sm whitespace-pre-wrap">
-                                {latestReport.treatment.medications}
-                              </p>
-                            </div>
-                            
-                            <div>
-                              <h5 className="text-sm font-semibold">Interventions:</h5>
-                              <p className="text-sm whitespace-pre-wrap">
-                                {latestReport.treatment.interventions}
-                              </p>
-                            </div>
+          {/* Patient Reports List */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Patient Reports</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {sortedReports && sortedReports.length > 0 ? (
+                <div className="space-y-6">
+                  {sortedReports.map((report) => (
+                    <Card key={report.id} className="border shadow-sm">
+                      <CardContent className="p-4">
+                        <div className="flex items-center justify-between border-b pb-3 mb-3">
+                          <div>
+                            <h3 className="font-semibold text-lg">{report.patientName}</h3>
+                            <p className="text-sm text-muted-foreground">
+                              {new Date(report.createdAt).toLocaleString()}
+                            </p>
                           </div>
+                          <Badge
+                            className={`flex items-center gap-2 ${getSeverityColor(report.triageAssessment?.severity)}`}
+                          >
+                            {getSeverityIcon(report.triageAssessment?.severity)}
+                            {report.triageAssessment?.severity || "Assessment pending..."}
+                          </Badge>
                         </div>
-                      )}
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="font-medium">Vitals:</span>
-                          <ul className="mt-1 space-y-1 text-muted-foreground">
-                            <li>Heart Rate: {latestReport.heartRate} bpm</li>
-                            <li>Blood Pressure: {latestReport.bloodPressure}</li>
-                            <li>Respiratory Rate: {latestReport.respiratoryRate}/min</li>
-                          </ul>
-                        </div>
-                        <div>
-                          <span className="font-medium">Additional:</span>
-                          <ul className="mt-1 space-y-1 text-muted-foreground">
-                            <li>O2 Saturation: {latestReport.oxygenSaturation}%</li>
-                            <li>Temperature: {latestReport.temperature}°C</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                      <p>AI is analyzing the patient data...</p>
-                      <p className="text-sm">Assessment will appear here shortly</p>
-                    </div>
-                  )}
+                        <Tabs defaultValue="assessment" className="mt-2">
+                          <TabsList className="w-full">
+                            <TabsTrigger value="assessment">AI Assessment</TabsTrigger>
+                            <TabsTrigger value="vitals">Vitals</TabsTrigger>
+                            <TabsTrigger value="treatment">Treatment</TabsTrigger>
+                          </TabsList>
+
+                          <TabsContent value="assessment" className="mt-3">
+                            {report.triageAssessment ? (
+                              <div className="rounded-lg bg-muted p-3">
+                                <p className="text-sm whitespace-pre-wrap">
+                                  {report.triageAssessment.explanation}
+                                </p>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-muted-foreground">
+                                <p>AI is analyzing the patient data...</p>
+                                <p className="text-sm">Assessment will appear here shortly</p>
+                              </div>
+                            )}
+                          </TabsContent>
+
+                          <TabsContent value="vitals" className="mt-3">
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div>
+                                <span className="font-medium">Vitals:</span>
+                                <ul className="mt-1 space-y-1 text-muted-foreground">
+                                  <li>Heart Rate: {report.heartRate} bpm</li>
+                                  <li>Blood Pressure: {report.bloodPressure}</li>
+                                  <li>Respiratory Rate: {report.respiratoryRate}/min</li>
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="font-medium">Additional:</span>
+                                <ul className="mt-1 space-y-1 text-muted-foreground">
+                                  <li>O2 Saturation: {report.oxygenSaturation}%</li>
+                                  <li>Temperature: {report.temperature}°C</li>
+                                </ul>
+                              </div>
+                            </div>
+                          </TabsContent>
+
+                          <TabsContent value="treatment" className="mt-3">
+                            {report.treatment && report.treatment.approved ? (
+                              <div className="rounded-lg bg-green-50 border border-green-200 p-3">
+                                <h4 className="font-medium mb-2 text-green-700 flex items-center gap-2">
+                                  <ThumbsUp className="h-4 w-4" />
+                                  Doctor-Approved Treatment Plan
+                                </h4>
+                                
+                                <div className="space-y-3">
+                                  <div>
+                                    <h5 className="text-sm font-semibold">Medications:</h5>
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {report.treatment.medications}
+                                    </p>
+                                  </div>
+                                  
+                                  <div>
+                                    <h5 className="text-sm font-semibold">Interventions:</h5>
+                                    <p className="text-sm whitespace-pre-wrap">
+                                      {report.treatment.interventions}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="text-center py-4 text-muted-foreground">
+                                <p>No treatment plan available yet</p>
+                                <p className="text-sm">Doctor will provide treatment recommendations</p>
+                              </div>
+                            )}
+                          </TabsContent>
+                        </Tabs>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              </CardContent>
-            </Card>
-          )}
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>No patient reports yet</p>
+                  <p className="text-sm">Submit a new patient report using the form below</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Patient Report Form */}
           <Card>
