@@ -178,7 +178,12 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Medical History</FormLabel>
                       <FormControl>
-                        <Input {...field} onChange={e => field.onChange(e.target.value.split(','))} placeholder="Separate with commas" />
+                        <Input 
+                          {...field}
+                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
+                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          placeholder="Separate with commas" 
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -192,7 +197,12 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Allergies</FormLabel>
                       <FormControl>
-                        <Input {...field} onChange={e => field.onChange(e.target.value.split(','))} placeholder="Separate with commas" />
+                        <Input 
+                          {...field}
+                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
+                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          placeholder="Separate with commas"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -206,7 +216,12 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Current Medications</FormLabel>
                       <FormControl>
-                        <Input {...field} onChange={e => field.onChange(e.target.value.split(','))} placeholder="Separate with commas" />
+                        <Input 
+                          {...field}
+                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
+                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          placeholder="Separate with commas"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

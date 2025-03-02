@@ -13,6 +13,10 @@ import { ProtectedRoute } from "@/lib/protected-route";
 function Router() {
   return (
     <Switch>
+      <Route path="/" component={() => {
+        window.location.href = "/auth";
+        return null;
+      }} />
       <Route path="/auth" component={AuthPage} />
       <ProtectedRoute path="/paramedic" component={ParamedicDashboard} />
       <ProtectedRoute path="/paramedic/create-report" component={CreateReport} />

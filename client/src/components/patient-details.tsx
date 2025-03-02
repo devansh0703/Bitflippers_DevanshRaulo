@@ -24,24 +24,24 @@ export default function PatientDetails({ patientId }: { patientId: number }) {
         </span>
       </div>
 
-      {patient.medicalHistory?.length > 0 && (
+      {(patient.medicalHistory?.length ?? 0) > 0 && (
         <div className="text-sm">
           <span className="font-medium">History:</span>{" "}
-          {patient.medicalHistory.join(", ")}
+          {patient.medicalHistory?.join(", ")}
         </div>
       )}
 
-      {patient.allergies?.length > 0 && (
+      {(patient.allergies?.length ?? 0) > 0 && (
         <div className="text-sm">
           <span className="font-medium">Allergies:</span>{" "}
-          {patient.allergies.join(", ")}
+          {patient.allergies?.join(", ")}
         </div>
       )}
 
-      {patient.medications?.length > 0 && (
+      {(patient.medications?.length ?? 0) > 0 && (
         <div className="text-sm">
           <span className="font-medium">Medications:</span>{" "}
-          {patient.medications.join(", ")}
+          {patient.medications?.join(", ")}
         </div>
       )}
     </div>
