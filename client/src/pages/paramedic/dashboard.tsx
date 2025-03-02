@@ -5,11 +5,11 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Plus, AlertTriangle, FileText } from "lucide-react";
+import { Loader2, Plus, AlertTriangle, FileText, LogOut } from "lucide-react";
 import PatientDetails from "@/components/patient-details";
 
 export default function ParamedicDashboard() {
-  const { user } = useAuth();
+  const { user, logoutMutation } = useAuth();
   const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
   });
@@ -29,12 +29,18 @@ export default function ParamedicDashboard() {
           <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
           <p className="text-muted-foreground">Paramedic Dashboard</p>
         </div>
-        <Link href="/paramedic/create-report">
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Report
+        <div className="flex gap-4">
+          <Link href="/paramedic/create-report">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Report
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={() => logoutMutation.mutate()}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
           </Button>
-        </Link>
+        </div>
       </div>
 
       <div className="grid gap-6">
@@ -58,7 +64,7 @@ export default function ParamedicDashboard() {
             </CardHeader>
             <CardContent>
               <PatientDetails patientId={report.patientId} />
-              
+
               <div className="mt-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
                   <FileText className="h-4 w-4 text-muted-foreground" />
@@ -67,6 +73,15 @@ export default function ParamedicDashboard() {
                     HR: {report.vitals.heartRate}, BP: {report.vitals.bloodPressure}
                   </span>
                 </div>
+
+                {report.triageResult && (
+                  <div className="text-sm bg-accent p-3 rounded-md">
+                    <span className="font-medium">Triage Assessment:</span>
+                    <pre className="mt-2 whitespace-pre-wrap font-mono text-xs">
+                      {report.triageResult.explanation}
+                    </pre>
+                  </div>
+                )}
 
                 {report.doctorRecommendation && (
                   <div className="flex items-start gap-2 text-sm bg-blue-50 p-3 rounded-md">

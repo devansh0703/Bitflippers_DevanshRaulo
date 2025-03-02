@@ -5,13 +5,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin } from "lucide-react";
+import { Loader2, MapPin, LogOut } from "lucide-react";
 import { useState } from "react";
 import PatientDetails from "@/components/patient-details";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/use-auth";
 
 export default function DoctorDashboard() {
   const { toast } = useToast();
+  const { user, logoutMutation } = useAuth();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [recommendation, setRecommendation] = useState("");
 
@@ -45,10 +47,21 @@ export default function DoctorDashboard() {
 
   return (
     <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Welcome, Dr. {user?.name}</h1>
+          <p className="text-muted-foreground">Doctor Dashboard</p>
+        </div>
+        <Button variant="outline" onClick={() => logoutMutation.mutate()}>
+          <LogOut className="mr-2 h-4 w-4" />
+          Sign Out
+        </Button>
+      </div>
+
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold">Patient Reports</h1>
-          
+          <h2 className="text-xl font-semibold">Patient Reports</h2>
+
           {reports?.map((report) => (
             <Card
               key={report.id}
@@ -75,7 +88,7 @@ export default function DoctorDashboard() {
               </CardHeader>
               <CardContent>
                 <PatientDetails patientId={report.patientId} />
-                
+
                 <div className="mt-4 space-y-2 text-sm">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
@@ -126,9 +139,9 @@ export default function DoctorDashboard() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <h3 className="font-medium">AI Triage Assessment</h3>
-                  <p className="text-sm bg-accent p-3 rounded-md">
+                  <pre className="text-sm bg-accent p-3 rounded-md whitespace-pre-wrap font-mono text-xs">
                     {selectedReport.triageResult?.explanation}
-                  </p>
+                  </pre>
                 </div>
 
                 <div className="space-y-2">
