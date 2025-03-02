@@ -10,17 +10,32 @@ import { Textarea } from "@/components/ui/textarea";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { useLocation } from "wouter";
-import { useState } from "react";
 import { useTriage } from "@/hooks/use-triage";
 import { Loader2 } from "lucide-react";
+import { z } from "zod";
+
+// Combine both schemas into one
+const createReportSchema = z.object({
+  // Patient fields
+  name: insertPatientSchema.shape.name,
+  age: insertPatientSchema.shape.age,
+  gender: insertPatientSchema.shape.gender,
+  medicalHistory: insertPatientSchema.shape.medicalHistory,
+  allergies: insertPatientSchema.shape.allergies,
+  medications: insertPatientSchema.shape.medications,
+  // Report fields (excluding patientId and paramedicId which are handled separately)
+  vitals: insertReportSchema.shape.vitals,
+  symptoms: insertReportSchema.shape.symptoms,
+});
+
+type FormData = z.infer<typeof createReportSchema>;
 
 export default function CreateReport() {
   const [, setLocation] = useLocation();
-  const [patientId, setPatientId] = useState<number | null>(null);
   const { getTriage, isAnalyzing } = useTriage();
 
-  const patientForm = useForm<InsertPatient>({
-    resolver: zodResolver(insertPatientSchema),
+  const form = useForm<FormData>({
+    resolver: zodResolver(createReportSchema),
     defaultValues: {
       name: "",
       age: 0,
@@ -28,17 +43,6 @@ export default function CreateReport() {
       medicalHistory: [],
       allergies: [],
       medications: [],
-    },
-  });
-
-  type ReportFormData = Omit<InsertReport, "patientId" | "paramedicId">;
-
-  const reportForm = useForm<ReportFormData>({
-    resolver: zodResolver(
-      insertReportSchema.omit({ patientId: true, paramedicId: true })
-    ),
-    defaultValues: {
-      location: { lat: 0, lng: 0 },
       vitals: {
         heartRate: 0,
         oxygenSaturation: 0,
@@ -46,87 +50,67 @@ export default function CreateReport() {
         respirationRate: 0,
       },
       symptoms: [],
-      triageResult: null,
-      doctorRecommendation: null,
-      createdAt: null,
     },
   });
 
-  const createPatientMutation = useMutation({
-    mutationFn: async (data: InsertPatient) => {
-      const res = await apiRequest("POST", "/api/patients", data);
-      return res.json();
-    },
-    onSuccess: (data) => {
-      setPatientId(data.id);
-    },
-  });
+  const createMutation = useMutation({
+    mutationFn: async (data: FormData) => {
+      // First create patient
+      const patientRes = await apiRequest("POST", "/api/patients", {
+        name: data.name,
+        age: data.age,
+        gender: data.gender,
+        medicalHistory: data.medicalHistory,
+        allergies: data.allergies,
+        medications: data.medications,
+      });
+      const patient = await patientRes.json();
 
-  const createReportMutation = useMutation({
-    mutationFn: async (data: Omit<InsertReport, "paramedicId">) => {
-      const res = await apiRequest("POST", "/api/reports", data);
-      return res.json();
+      // Get current location
+      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject);
+      });
+
+      // Get AI triage assessment
+      const triageResult = await getTriage({
+        vitals: data.vitals,
+        symptoms: data.symptoms,
+      });
+
+      // Create report
+      const reportRes = await apiRequest("POST", "/api/reports", {
+        patientId: patient.id,
+        location: {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        },
+        vitals: data.vitals,
+        symptoms: data.symptoms,
+        triageResult,
+      });
+
+      return reportRes.json();
     },
     onSuccess: () => {
       setLocation("/paramedic");
     },
   });
 
-  const onSubmitPatient = patientForm.handleSubmit((data) => {
-    createPatientMutation.mutate(data);
-  });
-
-  const onSubmitReport = reportForm.handleSubmit(async (data) => {
-    if (!patientId) return;
-
-    // Get current location
-    navigator.geolocation.getCurrentPosition(
-      async (position) => {
-        const reportData = {
-          ...data,
-          patientId,
-          location: {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          },
-        };
-
-        // Get AI triage
-        const triageResult = await getTriage({
-          vitals: reportData.vitals,
-          symptoms: reportData.symptoms,
-        });
-
-        createReportMutation.mutate({
-          ...reportData,
-          triageResult,
-        });
-      },
-      (error) => {
-        console.error("Error getting location:", error);
-        // Fallback to default location
-        createReportMutation.mutate({
-          ...data,
-          patientId,
-        });
-      }
-    );
-  });
-
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Create New Report</h1>
 
-      {!patientId ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Patient Information</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...patientForm}>
-              <form onSubmit={onSubmitPatient} className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Patient Information & Vitals</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit((data) => createMutation.mutate(data))} className="space-y-4">
+              {/* Patient Information */}
+              <div className="space-y-4">
                 <FormField
-                  control={patientForm.control}
+                  control={form.control}
                   name="name"
                   render={({ field }) => (
                     <FormItem>
@@ -141,16 +125,16 @@ export default function CreateReport() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
-                    control={patientForm.control}
+                    control={form.control}
                     name="age"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            {...field} 
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -159,7 +143,7 @@ export default function CreateReport() {
                   />
 
                   <FormField
-                    control={patientForm.control}
+                    control={form.control}
                     name="gender"
                     render={({ field }) => (
                       <FormItem>
@@ -183,19 +167,16 @@ export default function CreateReport() {
                 </div>
 
                 <FormField
-                  control={patientForm.control}
+                  control={form.control}
                   name="medicalHistory"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Medical History</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field}
                           value={field.value?.join(", ") || ""}
-                          onChange={(e) => 
-                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
-                          }
-                          placeholder="Separate with commas" 
+                          onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
+                          placeholder="Separate with commas"
                         />
                       </FormControl>
                       <FormMessage />
@@ -204,18 +185,15 @@ export default function CreateReport() {
                 />
 
                 <FormField
-                  control={patientForm.control}
+                  control={form.control}
                   name="allergies"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Allergies</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field}
                           value={field.value?.join(", ") || ""}
-                          onChange={(e) => 
-                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
-                          }
+                          onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Separate with commas"
                         />
                       </FormControl>
@@ -225,18 +203,15 @@ export default function CreateReport() {
                 />
 
                 <FormField
-                  control={patientForm.control}
+                  control={form.control}
                   name="medications"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Current Medications</FormLabel>
                       <FormControl>
                         <Input 
-                          {...field}
                           value={field.value?.join(", ") || ""}
-                          onChange={(e) => 
-                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
-                          }
+                          onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Separate with commas"
                         />
                       </FormControl>
@@ -244,32 +219,14 @@ export default function CreateReport() {
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <Button type="submit" disabled={createPatientMutation.isPending}>
-                  {createPatientMutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Continue to Vitals"
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      ) : (
-        <Card>
-          <CardHeader>
-            <CardTitle>Vital Signs & Symptoms</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Form {...reportForm}>
-              <form onSubmit={onSubmitReport} className="space-y-4">
+              {/* Vital Signs */}
+              <div className="space-y-4 pt-4">
+                <h3 className="font-medium">Vital Signs</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
-                    control={reportForm.control}
+                    control={form.control}
                     name="vitals.heartRate"
                     render={({ field }) => (
                       <FormItem>
@@ -287,7 +244,7 @@ export default function CreateReport() {
                   />
 
                   <FormField
-                    control={reportForm.control}
+                    control={form.control}
                     name="vitals.oxygenSaturation"
                     render={({ field }) => (
                       <FormItem>
@@ -307,16 +264,15 @@ export default function CreateReport() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
-                    control={reportForm.control}
+                    control={form.control}
                     name="vitals.bloodPressure"
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Blood Pressure</FormLabel>
                         <FormControl>
                           <Input 
-                            type="text"
-                            placeholder="120/80"
                             {...field}
+                            placeholder="120/80"
                           />
                         </FormControl>
                         <FormMessage />
@@ -325,7 +281,7 @@ export default function CreateReport() {
                   />
 
                   <FormField
-                    control={reportForm.control}
+                    control={form.control}
                     name="vitals.respirationRate"
                     render={({ field }) => (
                       <FormItem>
@@ -344,18 +300,15 @@ export default function CreateReport() {
                 </div>
 
                 <FormField
-                  control={reportForm.control}
+                  control={form.control}
                   name="symptoms"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Symptoms</FormLabel>
                       <FormControl>
                         <Textarea
-                          {...field}
                           value={field.value?.join("\n") || ""}
-                          onChange={(e) => 
-                            field.onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))
-                          }
+                          onChange={(e) => field.onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Enter symptoms (one per line)"
                           className="h-32"
                         />
@@ -364,34 +317,26 @@ export default function CreateReport() {
                     </FormItem>
                   )}
                 />
+              </div>
 
-                <div className="flex justify-between">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setPatientId(null)}
-                  >
-                    Back to Patient Info
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={createReportMutation.isPending || isAnalyzing}
-                  >
-                    {(createReportMutation.isPending || isAnalyzing) ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {isAnalyzing ? "Analyzing..." : "Saving..."}
-                      </>
-                    ) : (
-                      "Submit Report"
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
-      )}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={createMutation.isPending || isAnalyzing}
+              >
+                {(createMutation.isPending || isAnalyzing) ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    {isAnalyzing ? "Analyzing..." : "Saving..."}
+                  </>
+                ) : (
+                  "Submit Report"
+                )}
+              </Button>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
