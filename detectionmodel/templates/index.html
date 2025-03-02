@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disease Prediction</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #uploaded-image, #heatmap {
+            margin-top: 15px;
+            max-width: 300px;
+            height: auto;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 10px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.2);
+        }
+        #result {
+            margin-top: 20px;
+        }
+    </style>
+    <script>
+        function previewImage(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById("uploaded-image").src = e.target.result;
+                    document.getElementById("uploaded-image").style.display = "block";
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        async function submitForm(event) {
+    event.preventDefault(); // Prevent page reload
+
+    let formData = new FormData();
+    let fileInput = document.getElementById("file");
+
+    if (!fileInput.files.length) {
+        alert("Please select an image.");
+        return;
+    }
+
+    formData.append("file", fileInput.files[0]);
+
+    // Send image to Flask backend
+    let response = await fetch("/predict", {
+        method: "POST",
+        body: formData
+    });
+
+    let result = await response.json();
+
+    if (response.ok) {
+        document.getElementById("result").innerHTML = 
+            `<h3>Prediction: ${result.disease}</h3>
+             <h4>Accuracy: ${result.confidence}</h4>`;
+
+        // Show heatmap only if it exists
+        if (result.heatmap_url) {
+            document.getElementById("heatmap").src = result.heatmap_url;
+            document.getElementById("heatmap").style.display = "block";
+        }
+    } else {
+        document.getElementById("result").innerHTML = 
+            `<h3 style="color: red;">Error: ${result.error}</h3>`;
+    }
+}
+
+    </script>
+</head>
+<body>
+    <h2>Upload an Image for Disease Prediction</h2>
+    <form id="uploadForm" onsubmit="submitForm(event)">
+        <input type="file" id="file" name="file" accept="image/*" onchange="previewImage(event)">
+        <button type="submit">Predict</button>
+    </form>
+
+    <!-- Show uploaded image -->
+    <img id="uploaded-image" src="" alt="Uploaded Image Preview" style="display: none;">
+
+    <!-- Prediction result -->
+    <div id="result"></div>
+</body>
+</html>
