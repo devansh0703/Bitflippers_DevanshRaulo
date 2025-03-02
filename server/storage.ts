@@ -21,7 +21,9 @@ export interface IStorage {
 
   createEhrRecord(ehr: InsertEhrRecord): Promise<EhrRecord>;
   getEhrRecord(id: number): Promise<EhrRecord | undefined>;
+  getAllEhrRecords(): Promise<EhrRecord[]>;
   getEhrRecordsByPatient(patientId: number): Promise<EhrRecord[]>;
+  updateEhrRecord(id: number, update: Partial<EhrRecord>): Promise<EhrRecord>;
 
   sessionStore: session.SessionStore;
 }
@@ -42,6 +44,41 @@ export class MemStorage implements IStorage {
     this.currentId = { users: 1, patients: 1, reports: 1, ehrRecords: 1 };
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
+    });
+
+    // Add some dummy EHR records
+    this.createEhrRecord({
+      patientId: 1,
+      doctorId: 1,
+      diagnosis: "Hypertension with complications",
+      treatmentPlan: "Daily blood pressure monitoring, lifestyle modifications",
+      medications: [
+        { name: "Lisinopril", dosage: "10mg", frequency: "Once daily", duration: "3 months" }
+      ],
+      labResults: [
+        { test: "Blood Pressure", result: "160/95", date: new Date().toISOString() }
+      ],
+      notes: "Patient shows improved response to medication",
+      followUpDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    this.createEhrRecord({
+      patientId: 2,
+      doctorId: 1,
+      diagnosis: "Acute Respiratory Infection",
+      treatmentPlan: "Antibiotics course and rest",
+      medications: [
+        { name: "Amoxicillin", dosage: "500mg", frequency: "Twice daily", duration: "7 days" }
+      ],
+      labResults: [
+        { test: "Chest X-Ray", result: "Clear", date: new Date().toISOString() }
+      ],
+      notes: "Follow up if symptoms persist",
+      followUpDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), // 2 weeks from now
+      createdAt: new Date(),
+      updatedAt: new Date()
     });
   }
 
@@ -119,10 +156,22 @@ export class MemStorage implements IStorage {
     return this.ehrRecords.get(id);
   }
 
+  async getAllEhrRecords(): Promise<EhrRecord[]> {
+    return Array.from(this.ehrRecords.values());
+  }
+
   async getEhrRecordsByPatient(patientId: number): Promise<EhrRecord[]> {
     return Array.from(this.ehrRecords.values()).filter(
       (record) => record.patientId === patientId
     );
+  }
+
+  async updateEhrRecord(id: number, update: Partial<EhrRecord>): Promise<EhrRecord> {
+    const record = this.ehrRecords.get(id);
+    if (!record) throw new Error("EHR record not found");
+    const updated = { ...record, ...update, updatedAt: new Date() };
+    this.ehrRecords.set(id, updated);
+    return updated;
   }
 }
 

@@ -5,13 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, LogOut, Wand2, Filter } from "lucide-react";
+import { Loader2, MapPin, LogOut, Wand2, Filter, FileText } from "lucide-react";
 import { useState } from "react";
 import PatientDetails from "@/components/patient-details";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useDoctorRecommendation } from "@/hooks/use-doctor-recommendation";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Link } from "wouter";
 
 export default function DoctorDashboard() {
   const { toast } = useToast();
@@ -32,20 +33,18 @@ export default function DoctorDashboard() {
 
   const updateReportMutation = useMutation({
     mutationFn: async ({ id, recommendation }: { id: number; recommendation: string }) => {
-      // First update the report
       const reportRes = await apiRequest("PATCH", `/api/reports/${id}`, { 
         doctorRecommendation: recommendation 
       });
       const updatedReport = await reportRes.json();
 
-      // Then create EHR record
       const ehrRes = await apiRequest("POST", "/api/ehr", {
         patientId: updatedReport.patientId,
         doctorId: user?.id,
         diagnosis: `Emergency Response - ${updatedReport.triageResult?.severity.toUpperCase()}`,
         treatmentPlan: recommendation,
-        medications: [], // To be filled by the doctor later
-        labResults: [], // To be filled by the doctor later
+        medications: [], 
+        labResults: [], 
         notes: updatedReport.triageResult?.explanation
       });
 
@@ -91,10 +90,18 @@ export default function DoctorDashboard() {
           <h1 className="text-2xl font-bold">Welcome, Dr. {user?.name}</h1>
           <p className="text-muted-foreground">Doctor Dashboard</p>
         </div>
-        <Button variant="outline" onClick={() => logoutMutation.mutate()}>
-          <LogOut className="mr-2 h-4 w-4" />
-          Sign Out
-        </Button>
+        <div className="flex gap-4">
+          <Link href="/doctor/ehr">
+            <Button variant="outline">
+              <FileText className="mr-2 h-4 w-4" />
+              EHR Records
+            </Button>
+          </Link>
+          <Button variant="outline" onClick={() => logoutMutation.mutate()}>
+            <LogOut className="mr-2 h-4 w-4" />
+            Sign Out
+          </Button>
+        </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">

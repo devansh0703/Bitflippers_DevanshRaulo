@@ -85,13 +85,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.status(201).json(ehr);
   });
 
+  app.get("/api/ehr/all", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.status(403).send("Unauthorized");
+    }
+    const records = await storage.getAllEhrRecords();
+    res.json(records);
+  });
+
   app.get("/api/ehr/patient/:patientId", async (req, res) => {
     if (!req.isAuthenticated()) {
       return res.status(401).send("Unauthorized");
     }
-
     const records = await storage.getEhrRecordsByPatient(parseInt(req.params.patientId));
     res.json(records);
+  });
+
+  app.patch("/api/ehr/:id", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const record = await storage.updateEhrRecord(parseInt(req.params.id), req.body);
+      res.json(record);
+    } catch (error) {
+      res.status(404).send("EHR record not found");
+    }
   });
 
   const httpServer = createServer(app);

@@ -8,6 +8,7 @@ import AuthPage from "@/pages/auth-page";
 import ParamedicDashboard from "@/pages/paramedic/dashboard";
 import CreateReport from "@/pages/paramedic/create-report";
 import DoctorDashboard from "@/pages/doctor/dashboard";
+import EhrRecords from "@/pages/doctor/ehr-records";
 import { ProtectedRoute } from "@/lib/protected-route";
 
 function Router() {
@@ -21,6 +22,7 @@ function Router() {
       <ProtectedRoute path="/paramedic" component={ParamedicDashboard} />
       <ProtectedRoute path="/paramedic/create-report" component={CreateReport} />
       <ProtectedRoute path="/doctor" component={DoctorDashboard} />
+      <ProtectedRoute path="/doctor/ehr" component={EhrRecords} />
       <Route component={NotFound} />
     </Switch>
   );
