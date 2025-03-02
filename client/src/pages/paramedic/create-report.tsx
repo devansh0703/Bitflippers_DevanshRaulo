@@ -31,8 +31,12 @@ export default function CreateReport() {
     },
   });
 
-  const reportForm = useForm<Omit<InsertReport, "patientId" | "paramedicId">>({
-    resolver: zodResolver(insertReportSchema.omit({ patientId: true, paramedicId: true })),
+  type ReportFormData = Omit<InsertReport, "patientId" | "paramedicId">;
+
+  const reportForm = useForm<ReportFormData>({
+    resolver: zodResolver(
+      insertReportSchema.omit({ patientId: true, paramedicId: true })
+    ),
     defaultValues: {
       location: { lat: 0, lng: 0 },
       vitals: {
@@ -146,7 +150,7 @@ export default function CreateReport() {
                           <Input 
                             type="number" 
                             {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)} 
                           />
                         </FormControl>
                         <FormMessage />
@@ -187,8 +191,10 @@ export default function CreateReport() {
                       <FormControl>
                         <Input 
                           {...field}
-                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
-                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          value={field.value?.join(", ") || ""}
+                          onChange={(e) => 
+                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
+                          }
                           placeholder="Separate with commas" 
                         />
                       </FormControl>
@@ -206,8 +212,10 @@ export default function CreateReport() {
                       <FormControl>
                         <Input 
                           {...field}
-                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
-                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          value={field.value?.join(", ") || ""}
+                          onChange={(e) => 
+                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
+                          }
                           placeholder="Separate with commas"
                         />
                       </FormControl>
@@ -225,8 +233,10 @@ export default function CreateReport() {
                       <FormControl>
                         <Input 
                           {...field}
-                          value={Array.isArray(field.value) ? field.value.join(", ") : ""}
-                          onChange={e => field.onChange(e.target.value.split(',').map(s => s.trim()).filter(Boolean))}
+                          value={field.value?.join(", ") || ""}
+                          onChange={(e) => 
+                            field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
+                          }
                           placeholder="Separate with commas"
                         />
                       </FormControl>
@@ -266,9 +276,9 @@ export default function CreateReport() {
                         <FormLabel>Heart Rate (bpm)</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -284,9 +294,9 @@ export default function CreateReport() {
                         <FormLabel>Oxygen Saturation (%)</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -304,10 +314,9 @@ export default function CreateReport() {
                         <FormLabel>Blood Pressure</FormLabel>
                         <FormControl>
                           <Input 
-                            {...field}
+                            type="text"
                             placeholder="120/80"
-                            value={field.value || ""}
-                            onChange={e => field.onChange(e.target.value)}
+                            {...field}
                           />
                         </FormControl>
                         <FormMessage />
@@ -320,12 +329,12 @@ export default function CreateReport() {
                     name="vitals.respirationRate"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Respiration Rate</FormLabel>
+                        <FormLabel>Respiration Rate (/min)</FormLabel>
                         <FormControl>
                           <Input 
-                            type="number" 
-                            {...field} 
-                            onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                            type="number"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
                           />
                         </FormControl>
                         <FormMessage />
@@ -343,8 +352,10 @@ export default function CreateReport() {
                       <FormControl>
                         <Textarea
                           {...field}
-                          value={Array.isArray(field.value) ? field.value.join('\n') : ''}
-                          onChange={e => field.onChange(e.target.value.split('\n').map(s => s.trim()).filter(Boolean))}
+                          value={field.value?.join("\n") || ""}
+                          onChange={(e) => 
+                            field.onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))
+                          }
                           placeholder="Enter symptoms (one per line)"
                           className="h-32"
                         />
