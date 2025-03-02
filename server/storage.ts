@@ -1,4 +1,4 @@
-import { User, Patient, Report, InsertUser, InsertPatient, InsertReport } from "@shared/schema";
+import { User, Patient, Report, EhrRecord, InsertUser, InsertPatient, InsertReport, InsertEhrRecord } from "@shared/schema";
 import createMemoryStore from "memorystore";
 import session from "express-session";
 
@@ -8,17 +8,21 @@ export interface IStorage {
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  
+
   createPatient(patient: InsertPatient): Promise<Patient>;
   getPatient(id: number): Promise<Patient | undefined>;
-  
+
   createReport(report: InsertReport): Promise<Report>;
   getReport(id: number): Promise<Report | undefined>;
   getReportsByParamedic(paramedicId: number): Promise<Report[]>;
   getReportsByPatient(patientId: number): Promise<Report[]>;
   getAllReports(): Promise<Report[]>;
   updateReport(id: number, update: Partial<Report>): Promise<Report>;
-  
+
+  createEhrRecord(ehr: InsertEhrRecord): Promise<EhrRecord>;
+  getEhrRecord(id: number): Promise<EhrRecord | undefined>;
+  getEhrRecordsByPatient(patientId: number): Promise<EhrRecord[]>;
+
   sessionStore: session.SessionStore;
 }
 
@@ -26,6 +30,7 @@ export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private patients: Map<number, Patient>;
   private reports: Map<number, Report>;
+  private ehrRecords: Map<number, EhrRecord>;
   private currentId: { [key: string]: number };
   sessionStore: session.SessionStore;
 
@@ -33,7 +38,8 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.patients = new Map();
     this.reports = new Map();
-    this.currentId = { users: 1, patients: 1, reports: 1 };
+    this.ehrRecords = new Map();
+    this.currentId = { users: 1, patients: 1, reports: 1, ehrRecords: 1 };
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -100,6 +106,23 @@ export class MemStorage implements IStorage {
     const updated = { ...report, ...update };
     this.reports.set(id, updated);
     return updated;
+  }
+
+  async createEhrRecord(insertEhr: InsertEhrRecord): Promise<EhrRecord> {
+    const id = this.currentId.ehrRecords++;
+    const ehr = { ...insertEhr, id };
+    this.ehrRecords.set(id, ehr);
+    return ehr;
+  }
+
+  async getEhrRecord(id: number): Promise<EhrRecord | undefined> {
+    return this.ehrRecords.get(id);
+  }
+
+  async getEhrRecordsByPatient(patientId: number): Promise<EhrRecord[]> {
+    return Array.from(this.ehrRecords.values()).filter(
+      (record) => record.patientId === patientId
+    );
   }
 }
 

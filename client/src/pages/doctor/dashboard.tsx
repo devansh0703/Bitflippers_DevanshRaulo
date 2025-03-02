@@ -5,12 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, LogOut, Wand2 } from "lucide-react";
+import { Loader2, MapPin, LogOut, Wand2, Filter } from "lucide-react";
 import { useState } from "react";
 import PatientDetails from "@/components/patient-details";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
 import { useDoctorRecommendation } from "@/hooks/use-doctor-recommendation";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 export default function DoctorDashboard() {
   const { toast } = useToast();
@@ -18,21 +19,43 @@ export default function DoctorDashboard() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [recommendation, setRecommendation] = useState("");
   const { generateRecommendation, isGenerating } = useDoctorRecommendation();
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
 
-  const { data: reports, isLoading } = useQuery<Report[]>({
+  const { data: reports = [], isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
+  });
+
+  const filteredReports = reports.filter(report => {
+    if (severityFilter === "all") return true;
+    return report.triageResult?.severity === severityFilter;
   });
 
   const updateReportMutation = useMutation({
     mutationFn: async ({ id, recommendation }: { id: number; recommendation: string }) => {
-      const res = await apiRequest("PATCH", `/api/reports/${id}`, { doctorRecommendation: recommendation });
-      return res.json();
+      // First update the report
+      const reportRes = await apiRequest("PATCH", `/api/reports/${id}`, { 
+        doctorRecommendation: recommendation 
+      });
+      const updatedReport = await reportRes.json();
+
+      // Then create EHR record
+      const ehrRes = await apiRequest("POST", "/api/ehr", {
+        patientId: updatedReport.patientId,
+        doctorId: user?.id,
+        diagnosis: `Emergency Response - ${updatedReport.triageResult?.severity.toUpperCase()}`,
+        treatmentPlan: recommendation,
+        medications: [], // To be filled by the doctor later
+        labResults: [], // To be filled by the doctor later
+        notes: updatedReport.triageResult?.explanation
+      });
+
+      return updatedReport;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
       toast({
         title: "Recommendation sent",
-        description: "The paramedic will be notified of your recommendation.",
+        description: "The paramedic will be notified of your recommendation and an EHR record has been created.",
       });
       setSelectedReport(null);
       setRecommendation("");
@@ -76,9 +99,23 @@ export default function DoctorDashboard() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold">Patient Reports</h2>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold">Patient Reports</h2>
+            <Select value={severityFilter} onValueChange={setSeverityFilter}>
+              <SelectTrigger className="w-[180px]">
+                <Filter className="w-4 h-4 mr-2" />
+                <SelectValue placeholder="Filter by severity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Cases</SelectItem>
+                <SelectItem value="immediate">Immediate</SelectItem>
+                <SelectItem value="urgent">Urgent</SelectItem>
+                <SelectItem value="delayed">Delayed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-          {reports?.map((report) => (
+          {filteredReports.map((report) => (
             <Card
               key={report.id}
               className={`cursor-pointer transition-colors hover:bg-accent ${
@@ -137,7 +174,7 @@ export default function DoctorDashboard() {
             </Card>
           ))}
 
-          {reports?.length === 0 && (
+          {filteredReports.length === 0 && (
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-40">
                 <p className="text-muted-foreground">No reports to review</p>

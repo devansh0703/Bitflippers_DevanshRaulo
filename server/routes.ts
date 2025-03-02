@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth } from "./auth";
-import { insertPatientSchema, insertReportSchema } from "@shared/schema";
+import { insertPatientSchema, insertReportSchema, insertEhrSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
@@ -65,6 +65,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(404).send("Report not found");
     }
+  });
+
+  // EHR routes
+  app.post("/api/ehr", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    const parsed = insertEhrSchema.safeParse({
+      ...req.body,
+      doctorId: req.user.id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json(parsed.error);
+    }
+
+    const ehr = await storage.createEhrRecord(parsed.data);
+    res.status(201).json(ehr);
+  });
+
+  app.get("/api/ehr/patient/:patientId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    const records = await storage.getEhrRecordsByPatient(parseInt(req.params.patientId));
+    res.json(records);
   });
 
   const httpServer = createServer(app);
