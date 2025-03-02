@@ -144,6 +144,13 @@ export class MemStorage implements IStorage {
     this.reports.set(id, updated);
     return updated;
   }
+  
+  async getActiveReports(): Promise<Report[]> {
+    // Get only active (not completed) reports for the doctor's dashboard
+    return Array.from(this.reports.values()).filter(
+      (report) => !report.completed
+    );
+  }
 
   async createEhrRecord(insertEhr: InsertEhrRecord): Promise<EhrRecord> {
     const id = this.currentId.ehrRecords++;

@@ -31,10 +31,13 @@ export default function DoctorDashboard() {
     return report.triageResult?.severity === severityFilter;
   });
 
+  const hasReports = filteredReports.length > 0;
+
   const updateReportMutation = useMutation({
     mutationFn: async ({ id, recommendation }: { id: number; recommendation: string }) => {
       const reportRes = await apiRequest("PATCH", `/api/reports/${id}`, { 
-        doctorRecommendation: recommendation 
+        doctorRecommendation: recommendation,
+        completed: true
       });
       const updatedReport = await reportRes.json();
 
@@ -106,23 +109,32 @@ export default function DoctorDashboard() {
 
       <div className="grid md:grid-cols-2 gap-6">
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Patient Reports</h2>
-            <Select value={severityFilter} onValueChange={setSeverityFilter}>
-              <SelectTrigger className="w-[180px]">
-                <Filter className="w-4 h-4 mr-2" />
-                <SelectValue placeholder="Filter by severity" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Cases</SelectItem>
-                <SelectItem value="immediate">Immediate</SelectItem>
-                <SelectItem value="urgent">Urgent</SelectItem>
-                <SelectItem value="delayed">Delayed</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-semibold text-gray-800 flex items-center">
+              <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                <FileText className="h-5 w-5 text-blue-600" />
+              </div>
+              Patient Reports
+            </h2>
+            <div className="flex items-center bg-white rounded-lg shadow-sm p-1 border border-gray-100">
+              <Filter className="h-4 w-4 text-blue-500 ml-2" />
+              <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                <SelectTrigger className="w-[180px] border-0 focus:ring-0">
+                  <SelectValue placeholder="Filter by Severity" />
+                </SelectTrigger>
+                <SelectContent className="border border-gray-100 shadow-lg">
+                  <SelectItem value="all">All Reports</SelectItem>
+                  <SelectItem value="immediate" className="text-red-600">Immediate</SelectItem>
+                  <SelectItem value="urgent" className="text-amber-600">Urgent</SelectItem>
+                  <SelectItem value="delayed" className="text-green-600">Delayed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
-          {filteredReports.map((report) => (
+          <div className="grid gap-6">
+        {hasReports ? (
+          filteredReports.map((report) => (
             <Card
               key={report.id}
               className={`cursor-pointer transition-colors hover:bg-accent ${
@@ -179,15 +191,21 @@ export default function DoctorDashboard() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          ))
+        ) : (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center p-6">
+              <p className="text-center text-muted-foreground py-8">
+                No active patients requiring attention. All patients have been treated and moved to EHR records.
+              </p>
+              <Button asChild>
+                <Link href="/doctor/ehr-records">View EHR Records</Link>
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+          </div>
 
-          {filteredReports.length === 0 && (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-40">
-                <p className="text-muted-foreground">No reports to review</p>
-              </CardContent>
-            </Card>
-          )}
         </div>
 
         <div>

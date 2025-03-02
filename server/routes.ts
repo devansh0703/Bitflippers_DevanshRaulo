@@ -49,7 +49,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     if (req.user.role === "paramedic") {
       reports = await storage.getReportsByParamedic(req.user.id);
     } else {
-      reports = await storage.getAllReports();
+      // For doctors, only show incomplete reports (active patients)
+      reports = await storage.getActiveReports();
     }
     res.json(reports);
   });

@@ -43,19 +43,21 @@ export default function TreatmentRecommendation({
   }
 
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center gap-4">
-        <Stethoscope className="h-6 w-6 text-blue-600" />
+    <Card className="border border-blue-100 shadow-sm overflow-hidden">
+      <CardHeader className="flex flex-row items-center gap-4 bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-blue-100">
+        <div className="bg-white p-2 rounded-full shadow-sm">
+          <Stethoscope className="h-6 w-6 text-blue-600" />
+        </div>
         <div>
-          <CardTitle>Treatment Recommendation</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-blue-800">Treatment Recommendation</CardTitle>
+          <CardDescription className="text-blue-600 opacity-90">
             {isDoctor
-              ? "Provide treatment recommendations for the paramedic"
-              : "Doctor's recommendations for treatment"}
+              ? "Provide detailed treatment recommendations for the paramedic"
+              : "Doctor's professional recommendations for treatment"}
           </CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-6">
         {isDoctor ? (
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
@@ -63,24 +65,29 @@ export default function TreatmentRecommendation({
                 control={form.control}
                 name="recommendation"
                 render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Treatment Recommendation</FormLabel>
+                  <FormItem className="space-y-3">
+                    <FormLabel className="text-blue-800 font-medium">Treatment Recommendation</FormLabel>
                     <FormControl>
                       <Textarea
                         placeholder="Enter detailed treatment recommendations..."
-                        className="min-h-[100px]"
+                        className="min-h-[150px] border-blue-200 focus:border-blue-400 focus:ring-blue-200"
                         {...field}
                       />
                     </FormControl>
                   </FormItem>
                 )}
               />
-              <Button type="submit">Submit Recommendation</Button>
+              <Button 
+                type="submit" 
+                className="w-full mt-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 transition-all duration-200"
+              >
+                Submit Recommendation
+              </Button>
             </form>
           </Form>
         ) : (
-          <div className="p-4 bg-blue-50 rounded-lg">
-            <p className="text-gray-700 whitespace-pre-wrap">{recommendation}</p>
+          <div className="p-5 bg-blue-50 rounded-lg border border-blue-100 shadow-inner">
+            <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">{recommendation}</p>
           </div>
         )}
       </CardContent>

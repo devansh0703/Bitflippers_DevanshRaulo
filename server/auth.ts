@@ -89,6 +89,7 @@ export function setupAuth(app: Express) {
       next(error);
     }
   });
+  
 
   app.post("/api/login", (req, res, next) => {
     passport.authenticate("local", (err, user) => {
