@@ -131,7 +131,7 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -173,7 +173,7 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Medical History</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           value={field.value?.join(", ") || ""}
                           onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Separate with commas"
@@ -191,7 +191,7 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Allergies</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           value={field.value?.join(", ") || ""}
                           onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Separate with commas"
@@ -209,7 +209,7 @@ export default function CreateReport() {
                     <FormItem>
                       <FormLabel>Current Medications</FormLabel>
                       <FormControl>
-                        <Input 
+                        <Input
                           value={field.value?.join(", ") || ""}
                           onChange={(e) => field.onChange(e.target.value.split(",").map((s) => s.trim()).filter(Boolean))}
                           placeholder="Separate with commas"
@@ -232,7 +232,7 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Heart Rate (bpm)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -250,7 +250,7 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Oxygen Saturation (%)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -270,7 +270,7 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Blood Pressure</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             {...field}
                             placeholder="120/80"
                           />
@@ -287,7 +287,7 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Respiration Rate (/min)</FormLabel>
                         <FormControl>
-                          <Input 
+                          <Input
                             type="number"
                             {...field}
                             onChange={(e) => field.onChange(parseInt(e.target.value) || 0)}
@@ -308,7 +308,7 @@ export default function CreateReport() {
                       <FormControl>
                         <Textarea
                           value={field.value?.join("\n") || ""}
-                          onChange={(e) => field.onChange(e.target.value.split("\n").map((s) => s.trim()).filter(Boolean))}
+                          onChange={(e) => field.onChange(e.target.value.split("\n").filter(Boolean))}
                           placeholder="Enter symptoms (one per line)"
                           className="h-32"
                         />
