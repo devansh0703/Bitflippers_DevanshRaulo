@@ -1,22 +1,39 @@
-import { IStorage } from "./storage";
+import { User, Patient, Report, InsertUser, InsertPatient, InsertReport } from "@shared/schema";
 import createMemoryStore from "memorystore";
 import session from "express-session";
-import { InsertUser, InsertPatient, InsertCase, User, Patient, Case } from "@shared/schema";
 
 const MemoryStore = createMemoryStore(session);
+
+export interface IStorage {
+  getUser(id: number): Promise<User | undefined>;
+  getUserByUsername(username: string): Promise<User | undefined>;
+  createUser(user: InsertUser): Promise<User>;
+  
+  createPatient(patient: InsertPatient): Promise<Patient>;
+  getPatient(id: number): Promise<Patient | undefined>;
+  
+  createReport(report: InsertReport): Promise<Report>;
+  getReport(id: number): Promise<Report | undefined>;
+  getReportsByParamedic(paramedicId: number): Promise<Report[]>;
+  getReportsByPatient(patientId: number): Promise<Report[]>;
+  getAllReports(): Promise<Report[]>;
+  updateReport(id: number, update: Partial<Report>): Promise<Report>;
+  
+  sessionStore: session.SessionStore;
+}
 
 export class MemStorage implements IStorage {
   private users: Map<number, User>;
   private patients: Map<number, Patient>;
-  private cases: Map<number, Case>;
+  private reports: Map<number, Report>;
+  private currentId: { [key: string]: number };
   sessionStore: session.SessionStore;
-  currentId: number;
 
   constructor() {
     this.users = new Map();
     this.patients = new Map();
-    this.cases = new Map();
-    this.currentId = 1;
+    this.reports = new Map();
+    this.currentId = { users: 1, patients: 1, reports: 1 };
     this.sessionStore = new MemoryStore({
       checkPeriod: 86400000,
     });
@@ -28,50 +45,60 @@ export class MemStorage implements IStorage {
 
   async getUserByUsername(username: string): Promise<User | undefined> {
     return Array.from(this.users.values()).find(
-      (user) => user.username === username,
+      (user) => user.username === username
     );
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = this.currentId++;
-    const user: User = { ...insertUser, id };
+    const id = this.currentId.users++;
+    const user = { ...insertUser, id };
     this.users.set(id, user);
     return user;
   }
 
   async createPatient(insertPatient: InsertPatient): Promise<Patient> {
-    const id = this.currentId++;
-    const patient: Patient = { ...insertPatient, id };
+    const id = this.currentId.patients++;
+    const patient = { ...insertPatient, id };
     this.patients.set(id, patient);
     return patient;
   }
 
-  async createCase(insertCase: InsertCase): Promise<Case> {
-    const id = this.currentId++;
-    const caseData: Case = { ...insertCase, id };
-    this.cases.set(id, caseData);
-    return caseData;
+  async getPatient(id: number): Promise<Patient | undefined> {
+    return this.patients.get(id);
   }
 
-  async getAllCases(): Promise<Case[]> {
-    return Array.from(this.cases.values());
+  async createReport(insertReport: InsertReport): Promise<Report> {
+    const id = this.currentId.reports++;
+    const report = { ...insertReport, id };
+    this.reports.set(id, report);
+    return report;
   }
 
-  async updateCaseTriageResult(id: number, triageResult: string): Promise<Case> {
-    const caseData = this.cases.get(id);
-    if (!caseData) throw new Error("Case not found");
-    
-    const updated = { ...caseData, triageResult: JSON.parse(triageResult) };
-    this.cases.set(id, updated);
-    return updated;
+  async getReport(id: number): Promise<Report | undefined> {
+    return this.reports.get(id);
   }
 
-  async updateCaseTreatment(id: number, treatment: string): Promise<Case> {
-    const caseData = this.cases.get(id);
-    if (!caseData) throw new Error("Case not found");
-    
-    const updated = { ...caseData, treatmentRecommendation: treatment };
-    this.cases.set(id, updated);
+  async getReportsByParamedic(paramedicId: number): Promise<Report[]> {
+    return Array.from(this.reports.values()).filter(
+      (report) => report.paramedicId === paramedicId
+    );
+  }
+
+  async getReportsByPatient(patientId: number): Promise<Report[]> {
+    return Array.from(this.reports.values()).filter(
+      (report) => report.patientId === patientId
+    );
+  }
+
+  async getAllReports(): Promise<Report[]> {
+    return Array.from(this.reports.values());
+  }
+
+  async updateReport(id: number, update: Partial<Report>): Promise<Report> {
+    const report = this.reports.get(id);
+    if (!report) throw new Error("Report not found");
+    const updated = { ...report, ...update };
+    this.reports.set(id, updated);
     return updated;
   }
 }

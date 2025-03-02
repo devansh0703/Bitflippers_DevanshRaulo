@@ -1,137 +1,94 @@
-import { useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { Report } from "@shared/schema";
+import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import PatientForm from "@/components/patient-form";
-import LocationMap from "@/components/location-map";
-import TriageResult from "@/components/triage-result";
-import TreatmentRecommendation from "@/components/treatment-recommendation";
-import { apiRequest } from "@/lib/queryClient";
-import { Location, Vitals } from "@shared/schema";
-import { Loader2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Loader2, Plus, AlertTriangle, FileText } from "lucide-react";
+import PatientDetails from "@/components/patient-details";
 
 export default function ParamedicDashboard() {
   const { user } = useAuth();
-  const [currentLocation, setCurrentLocation] = useState<Location>();
-  const [currentCaseId, setCurrentCaseId] = useState<number>();
-
-  const { data: currentCase, isLoading: isCaseLoading } = useQuery({
-    queryKey: ["/api/cases", currentCaseId],
-    enabled: !!currentCaseId,
+  const { data: reports, isLoading } = useQuery<Report[]>({
+    queryKey: ["/api/reports"],
   });
 
-  const createCaseMutation = useMutation({
-    mutationFn: async (data: {
-      patientData: any;
-      vitals: Vitals;
-      location: Location;
-      symptoms: string;
-    }) => {
-      const patientRes = await apiRequest("POST", "/api/patients", data.patientData);
-      const patient = await patientRes.json();
-
-      const caseRes = await apiRequest("POST", "/api/cases", {
-        patientId: patient.id,
-        paramedicId: user!.id,
-        location: data.location,
-        vitals: data.vitals,
-        symptoms: data.symptoms,
-      });
-
-      return await caseRes.json();
-    },
-    onSuccess: (data) => {
-      setCurrentCaseId(data.id);
-    },
-  });
-
-  const handleSubmit = async (formData: any) => {
-    if (!currentLocation) return;
-
-    createCaseMutation.mutate({
-      patientData: {
-        name: formData.name,
-        age: formData.age,
-        gender: formData.gender,
-        medicalHistory: formData.medicalHistory,
-        allergies: formData.allergies,
-        medications: formData.medications,
-      },
-      vitals: formData.vitals,
-      location: currentLocation,
-      symptoms: formData.symptoms,
-    });
-  };
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Paramedic Dashboard</h1>
-            <p className="text-gray-600">Welcome, {user?.name}</p>
-          </div>
-          <Button variant="outline" onClick={() => setCurrentCaseId(undefined)}>
-            New Case
-          </Button>
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">Welcome, {user?.name}</h1>
+          <p className="text-muted-foreground">Paramedic Dashboard</p>
         </div>
+        <Link href="/paramedic/create-report">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            New Report
+          </Button>
+        </Link>
+      </div>
 
-        {!currentCaseId ? (
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <Card className="mb-8">
-                <CardHeader>
-                  <CardTitle>Current Location</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <LocationMap
-                    location={currentLocation}
-                    onLocationUpdate={setCurrentLocation}
-                  />
-                </CardContent>
-              </Card>
-
-              <PatientForm
-                onSubmit={handleSubmit}
-                isLoading={createCaseMutation.isPending}
-              />
-            </div>
-
-            <div className="space-y-6">
-              {createCaseMutation.isPending && (
-                <div className="flex items-center justify-center p-8">
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                  <span className="ml-2">Processing triage...</span>
+      <div className="grid gap-6">
+        {reports?.map((report) => (
+          <Card key={report.id}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-lg font-medium">
+                Patient Report #{report.id}
+              </CardTitle>
+              <Badge
+                variant={
+                  report.triageResult?.severity === "immediate"
+                    ? "destructive"
+                    : report.triageResult?.severity === "urgent"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {report.triageResult?.severity || "Pending"}
+              </Badge>
+            </CardHeader>
+            <CardContent>
+              <PatientDetails patientId={report.patientId} />
+              
+              <div className="mt-4 space-y-2">
+                <div className="flex items-center gap-2 text-sm">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  <span className="font-medium">Vitals:</span>
+                  <span>
+                    HR: {report.vitals.heartRate}, BP: {report.vitals.bloodPressure}
+                  </span>
                 </div>
-              )}
-            </div>
-          </div>
-        ) : (
-          <div className="grid md:grid-cols-2 gap-8">
-            {isCaseLoading ? (
-              <div className="flex items-center justify-center p-8">
-                <Loader2 className="h-8 w-8 animate-spin" />
+
+                {report.doctorRecommendation && (
+                  <div className="flex items-start gap-2 text-sm bg-blue-50 p-3 rounded-md">
+                    <AlertTriangle className="h-4 w-4 text-blue-500 mt-0.5" />
+                    <div>
+                      <span className="font-medium block">Doctor's Recommendation:</span>
+                      {report.doctorRecommendation}
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <>
-                <div className="space-y-6">
-                  <LocationMap location={currentCase?.location} isInteractive={false} />
-                  {currentCase?.triageResult && (
-                    <TriageResult
-                      severity={currentCase.triageResult.severity}
-                      explanation={currentCase.triageResult.explanation}
-                    />
-                  )}
-                </div>
-                <div>
-                  <TreatmentRecommendation
-                    recommendation={currentCase?.treatmentRecommendation}
-                  />
-                </div>
-              </>
-            )}
-          </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {reports?.length === 0 && (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center h-40">
+              <FileText className="h-8 w-8 text-muted-foreground mb-2" />
+              <p className="text-muted-foreground">No reports yet</p>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

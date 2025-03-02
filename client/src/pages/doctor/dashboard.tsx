@@ -1,220 +1,195 @@
-import { useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Case } from "@shared/schema";
-import { apiRequest, queryClient } from "@/lib/queryClient";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Report } from "@shared/schema";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import LocationMap from "@/components/location-map";
-import TriageResult from "@/components/triage-result";
-import TreatmentRecommendation from "@/components/treatment-recommendation";
-import { Loader2, Search, Filter } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
+import { Loader2, MapPin } from "lucide-react";
+import { useState } from "react";
+import PatientDetails from "@/components/patient-details";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 export default function DoctorDashboard() {
-  const { user } = useAuth();
-  const [selectedCaseId, setSelectedCaseId] = useState<number>();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const { toast } = useToast();
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [recommendation, setRecommendation] = useState("");
 
-  const { data: cases = [], isLoading } = useQuery<Case[]>({
-    queryKey: ["/api/cases"],
+  const { data: reports, isLoading } = useQuery<Report[]>({
+    queryKey: ["/api/reports"],
   });
 
-  const treatmentMutation = useMutation({
-    mutationFn: async ({
-      caseId,
-      recommendation,
-    }: {
-      caseId: number;
-      recommendation: string;
-    }) => {
-      const res = await apiRequest("POST", `/api/cases/${caseId}/treatment`, {
-        recommendation,
-      });
+  const updateReportMutation = useMutation({
+    mutationFn: async ({ id, recommendation }: { id: number; recommendation: string }) => {
+      const res = await apiRequest("PATCH", `/api/reports/${id}`, { doctorRecommendation: recommendation });
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/cases"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports"] });
+      toast({
+        title: "Recommendation sent",
+        description: "The paramedic will be notified of your recommendation.",
+      });
+      setSelectedReport(null);
+      setRecommendation("");
     },
   });
 
-  const filteredCases = cases.filter((case_) => {
-    const matchesSearch =
-      case_.patient?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      case_.symptoms.toLowerCase().includes(searchTerm.toLowerCase());
-
-    const matchesSeverity =
-      severityFilter === "all" ||
-      case_.triageResult?.severity.toLowerCase() === severityFilter.toLowerCase();
-
-    return matchesSearch && matchesSeverity;
-  });
-
-  const selectedCase = cases.find((case_) => case_.id === selectedCaseId);
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">Doctor Dashboard</h1>
-          <p className="text-gray-600">Welcome, Dr. {user?.name}</p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Cases List */}
-          <div className="lg:col-span-1 space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Emergency Cases</CardTitle>
-                <CardDescription>Active cases requiring attention</CardDescription>
+    <div className="container mx-auto p-6">
+      <div className="grid md:grid-cols-2 gap-6">
+        <div className="space-y-6">
+          <h1 className="text-2xl font-bold">Patient Reports</h1>
+          
+          {reports?.map((report) => (
+            <Card
+              key={report.id}
+              className={`cursor-pointer transition-colors hover:bg-accent ${
+                selectedReport?.id === report.id ? "border-primary" : ""
+              }`}
+              onClick={() => setSelectedReport(report)}
+            >
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg font-medium">
+                  Patient Report #{report.id}
+                </CardTitle>
+                <Badge
+                  variant={
+                    report.triageResult?.severity === "immediate"
+                      ? "destructive"
+                      : report.triageResult?.severity === "urgent"
+                      ? "default"
+                      : "secondary"
+                  }
+                >
+                  {report.triageResult?.severity || "Pending"}
+                </Badge>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Search cases..."
-                      className="pl-8"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
+              <CardContent>
+                <PatientDetails patientId={report.patientId} />
+                
+                <div className="mt-4 space-y-2 text-sm">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <span className="font-medium">Heart Rate:</span>{" "}
+                      {report.vitals.heartRate} bpm
+                    </div>
+                    <div>
+                      <span className="font-medium">Blood Pressure:</span>{" "}
+                      {report.vitals.bloodPressure}
+                    </div>
+                    <div>
+                      <span className="font-medium">O2 Saturation:</span>{" "}
+                      {report.vitals.oxygenSaturation}%
+                    </div>
+                    <div>
+                      <span className="font-medium">Respiration:</span>{" "}
+                      {report.vitals.respirationRate} /min
+                    </div>
                   </div>
-                  <Select
-                    value={severityFilter}
-                    onValueChange={setSeverityFilter}
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <Filter className="h-4 w-4 mr-2" />
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Severities</SelectItem>
-                      <SelectItem value="immediate">Immediate</SelectItem>
-                      <SelectItem value="urgent">Urgent</SelectItem>
-                      <SelectItem value="delayed">Delayed</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                {isLoading ? (
-                  <div className="flex items-center justify-center p-8">
-                    <Loader2 className="h-8 w-8 animate-spin" />
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <MapPin className="h-4 w-4" />
+                    <span>
+                      Location: {report.location.lat.toFixed(6)},{" "}
+                      {report.location.lng.toFixed(6)}
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-2">
-                    {filteredCases.map((case_) => (
-                      <Card
-                        key={case_.id}
-                        className={`cursor-pointer transition-colors ${
-                          selectedCaseId === case_.id
-                            ? "border-primary"
-                            : "hover:border-primary/50"
-                        }`}
-                        onClick={() => setSelectedCaseId(case_.id)}
-                      >
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h3 className="font-semibold">
-                                {case_.patient?.name}
-                              </h3>
-                              <p className="text-sm text-gray-500">
-                                {new Date(case_.createdAt).toLocaleTimeString()}
-                              </p>
-                            </div>
-                            {case_.triageResult && (
-                              <div
-                                className={`px-2 py-1 rounded text-xs font-semibold ${
-                                  case_.triageResult.severity === "IMMEDIATE"
-                                    ? "bg-red-100 text-red-700"
-                                    : case_.triageResult.severity === "URGENT"
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-green-100 text-green-700"
-                                }`}
-                              >
-                                {case_.triageResult.severity}
-                              </div>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
+                </div>
               </CardContent>
             </Card>
-          </div>
+          ))}
 
-          {/* Case Details */}
-          <div className="lg:col-span-2">
-            {selectedCase ? (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Patient Details</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="grid md:grid-cols-2 gap-4">
-                      <div>
-                        <h3 className="font-semibold">Basic Information</h3>
-                        <p>Name: {selectedCase.patient?.name}</p>
-                        <p>Age: {selectedCase.patient?.age}</p>
-                        <p>Gender: {selectedCase.patient?.gender}</p>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">Medical Information</h3>
-                        <p>History: {selectedCase.patient?.medicalHistory}</p>
-                        <p>Allergies: {selectedCase.patient?.allergies}</p>
-                        <p>Medications: {selectedCase.patient?.medications}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          {reports?.length === 0 && (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center h-40">
+                <p className="text-muted-foreground">No reports to review</p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
 
-                <div className="grid md:grid-cols-2 gap-6">
-                  <LocationMap
-                    location={selectedCase.location}
-                    isInteractive={false}
-                  />
-                  {selectedCase.triageResult && (
-                    <TriageResult
-                      severity={selectedCase.triageResult.severity}
-                      explanation={selectedCase.triageResult.explanation}
-                    />
-                  )}
+        <div>
+          {selectedReport ? (
+            <Card>
+              <CardHeader>
+                <CardTitle>Medical Recommendation</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="font-medium">AI Triage Assessment</h3>
+                  <p className="text-sm bg-accent p-3 rounded-md">
+                    {selectedReport.triageResult?.explanation}
+                  </p>
                 </div>
 
-                <TreatmentRecommendation
-                  isDoctor={true}
-                  recommendation={selectedCase.treatmentRecommendation}
-                  onSubmit={(recommendation) =>
-                    treatmentMutation.mutate({
-                      caseId: selectedCase.id,
-                      recommendation,
-                    })
-                  }
-                />
-              </div>
-            ) : (
-              <div className="flex items-center justify-center h-[400px] bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">
-                <p className="text-gray-500">Select a case to view details</p>
-              </div>
-            )}
-          </div>
+                <div className="space-y-2">
+                  <h3 className="font-medium">Symptoms</h3>
+                  <ul className="list-disc list-inside text-sm space-y-1">
+                    {selectedReport.symptoms.map((symptom, i) => (
+                      <li key={i}>{symptom}</li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-2">
+                  <h3 className="font-medium">Your Recommendation</h3>
+                  <Textarea
+                    value={recommendation}
+                    onChange={(e) => setRecommendation(e.target.value)}
+                    placeholder="Enter your treatment recommendations..."
+                    className="h-32"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSelectedReport(null);
+                      setRecommendation("");
+                    }}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={() =>
+                      updateReportMutation.mutate({
+                        id: selectedReport.id,
+                        recommendation,
+                      })
+                    }
+                    disabled={!recommendation || updateReportMutation.isPending}
+                  >
+                    {updateReportMutation.isPending ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Sending...
+                      </>
+                    ) : (
+                      "Send Recommendation"
+                    )}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center h-40">
+                <p className="text-muted-foreground">
+                  Select a report to provide recommendations
+                </p>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

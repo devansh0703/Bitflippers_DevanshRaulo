@@ -1,168 +1,199 @@
-import { useState } from "react";
-import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { insertUserSchema } from "@shared/schema";
+import { z } from "zod";
+
+const loginSchema = insertUserSchema.pick({ username: true, password: true });
 
 export default function AuthPage() {
-  const [, setLocation] = useLocation();
   const { user, loginMutation, registerMutation } = useAuth();
-  const [role, setRole] = useState<"paramedic" | "doctor">("paramedic");
+  const [, setLocation] = useLocation();
 
-  if (user) {
-    setLocation(user.role === "paramedic" ? "/paramedic" : "/doctor");
-    return null;
-  }
+  useEffect(() => {
+    if (user) {
+      setLocation(user.role === "paramedic" ? "/paramedic" : "/doctor");
+    }
+  }, [user, setLocation]);
+
+  const loginForm = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: "", password: "" },
+  });
+
+  const registerForm = useForm({
+    resolver: zodResolver(insertUserSchema),
+    defaultValues: { username: "", password: "", role: "paramedic", name: "" },
+  });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex">
-      <div className="flex-1 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-2xl font-bold text-center">
-              Emergency Medical Response System
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Tabs defaultValue="login">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="login">Login</TabsTrigger>
-                <TabsTrigger value="register">Register</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="login">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    loginMutation.mutate({
-                      username: formData.get("username") as string,
-                      password: formData.get("password") as string,
-                    });
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input id="username" name="username" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                    />
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={loginMutation.isPending}
-                  >
-                    {loginMutation.isPending ? "Logging in..." : "Login"}
-                  </Button>
-                </form>
-              </TabsContent>
-
-              <TabsContent value="register">
-                <form
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    const formData = new FormData(e.currentTarget);
-                    registerMutation.mutate({
-                      username: formData.get("username") as string,
-                      password: formData.get("password") as string,
-                      name: formData.get("name") as string,
-                      role,
-                    });
-                  }}
-                  className="space-y-4"
-                >
-                  <div className="space-y-2">
-                    <Label htmlFor="register-name">Full Name</Label>
-                    <Input id="register-name" name="name" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-username">Username</Label>
-                    <Input id="register-username" name="username" required />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="register-password">Password</Label>
-                    <Input
-                      id="register-password"
-                      name="password"
-                      type="password"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Role</Label>
-                    <Select
-                      value={role}
-                      onValueChange={(value) =>
-                        setRole(value as "paramedic" | "doctor")
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="paramedic">Paramedic</SelectItem>
-                        <SelectItem value="doctor">Doctor</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={registerMutation.isPending}
-                  >
-                    {registerMutation.isPending ? "Registering..." : "Register"}
-                  </Button>
-                </form>
-              </TabsContent>
-            </Tabs>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="hidden lg:flex flex-1 items-center justify-center bg-gradient-to-br from-blue-600 to-indigo-700 p-12">
-        <div className="max-w-lg text-white">
-          <h1 className="text-4xl font-bold mb-6">
-            AI-Powered Emergency Response
-          </h1>
-          <p className="text-lg opacity-90 mb-8">
-            Join our platform to revolutionize emergency medical response with
-            AI-assisted triage, real-time collaboration, and smart resource
-            allocation.
-          </p>
-          <div className="grid grid-cols-2 gap-6">
-            <div className="border border-white/20 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">For Paramedics</h3>
-              <p className="text-sm opacity-75">
-                Get AI-powered triage assistance and real-time communication with
-                doctors.
-              </p>
-            </div>
-            <div className="border border-white/20 rounded-lg p-4">
-              <h3 className="font-semibold mb-2">For Doctors</h3>
-              <p className="text-sm opacity-75">
-                Monitor cases in real-time and provide rapid treatment
-                recommendations.
-              </p>
-            </div>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50">
+      <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8 p-4">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold tracking-tighter bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              Emergency Response System
+            </h1>
+            <p className="text-gray-500">
+              AI-powered medical intervention platform for efficient crisis response
+            </p>
           </div>
+
+          <Card>
+            <CardContent className="pt-6">
+              <Tabs defaultValue="login">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="login">Login</TabsTrigger>
+                  <TabsTrigger value="register">Register</TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="login">
+                  <Form {...loginForm}>
+                    <form onSubmit={loginForm.handleSubmit((data) => loginMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={loginForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={loginForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={loginMutation.isPending}>
+                        {loginMutation.isPending ? "Logging in..." : "Login"}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+
+                <TabsContent value="register">
+                  <Form {...registerForm}>
+                    <form onSubmit={registerForm.handleSubmit((data) => registerMutation.mutate(data))} className="space-y-4">
+                      <FormField
+                        control={registerForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="username"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Username</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="password"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Password</FormLabel>
+                            <FormControl>
+                              <Input type="password" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={registerForm.control}
+                        name="role"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Role</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                <SelectItem value="paramedic">Paramedic</SelectItem>
+                                <SelectItem value="doctor">Doctor</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <Button type="submit" className="w-full" disabled={registerMutation.isPending}>
+                        {registerMutation.isPending ? "Registering..." : "Register"}
+                      </Button>
+                    </form>
+                  </Form>
+                </TabsContent>
+              </Tabs>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="hidden md:block">
+          <Card className="h-full bg-gradient-to-br from-blue-600 to-indigo-600 text-white">
+            <CardHeader>
+              <CardTitle className="text-2xl">AI-Powered Emergency Response</CardTitle>
+              <CardDescription className="text-blue-100">
+                Revolutionizing crisis response with artificial intelligence
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <h3 className="font-semibold">Smart Triage</h3>
+                <p className="text-sm text-blue-100">
+                  AI-driven patient assessment and prioritization
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-semibold">Real-time Collaboration</h3>
+                <p className="text-sm text-blue-100">
+                  Seamless communication between paramedics and doctors
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h3 className="font-semibold">Intelligent Decision Support</h3>
+                <p className="text-sm text-blue-100">
+                  AI-assisted treatment recommendations and resource optimization
+                </p>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

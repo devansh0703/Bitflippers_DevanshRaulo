@@ -1,49 +1,70 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
-import { setupAuth } from "./auth";
 import { storage } from "./storage";
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import { insertCaseSchema, insertPatientSchema } from "@shared/schema";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "default-key");
+import { setupAuth } from "./auth";
+import { insertPatientSchema, insertReportSchema } from "@shared/schema";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   setupAuth(app);
 
   // Patient routes
   app.post("/api/patients", async (req, res) => {
-    const data = insertPatientSchema.parse(req.body);
-    const patient = await storage.createPatient(data);
+    const parsed = insertPatientSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json(parsed.error);
+    }
+    const patient = await storage.createPatient(parsed.data);
+    res.status(201).json(patient);
+  });
+
+  app.get("/api/patients/:id", async (req, res) => {
+    const patient = await storage.getPatient(parseInt(req.params.id));
+    if (!patient) return res.status(404).send("Patient not found");
     res.json(patient);
   });
 
-  // Case routes
-  app.post("/api/cases", async (req, res) => {
-    const data = insertCaseSchema.parse(req.body);
-    const caseData = await storage.createCase(data);
-    
-    // Generate AI triage
-    const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-    const prompt = `Given these vitals and symptoms, classify the emergency severity as IMMEDIATE, URGENT, or DELAYED. Also provide a brief explanation.\n\nVitals: ${JSON.stringify(data.vitals)}\nSymptoms: ${data.symptoms}`;
-    
-    const result = await model.generateContent(prompt);
-    const triageResult = await result.response.text();
-    
-    const updatedCase = await storage.updateCaseTriageResult(caseData.id, triageResult);
-    res.json(updatedCase);
+  // Report routes
+  app.post("/api/reports", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "paramedic") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    const parsed = insertReportSchema.safeParse({
+      ...req.body,
+      paramedicId: req.user.id,
+    });
+    if (!parsed.success) {
+      return res.status(400).json(parsed.error);
+    }
+    const report = await storage.createReport(parsed.data);
+    res.status(201).json(report);
   });
 
-  app.get("/api/cases", async (req, res) => {
-    const cases = await storage.getAllCases();
-    res.json(cases);
+  app.get("/api/reports", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).send("Unauthorized");
+    }
+
+    let reports;
+    if (req.user.role === "paramedic") {
+      reports = await storage.getReportsByParamedic(req.user.id);
+    } else {
+      reports = await storage.getAllReports();
+    }
+    res.json(reports);
   });
 
-  app.post("/api/cases/:id/treatment", async (req, res) => {
-    const caseId = parseInt(req.params.id);
-    const { recommendation } = req.body;
-    
-    const updatedCase = await storage.updateCaseTreatment(caseId, recommendation);
-    res.json(updatedCase);
+  app.patch("/api/reports/:id", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== "doctor") {
+      return res.status(403).send("Unauthorized");
+    }
+
+    try {
+      const report = await storage.updateReport(parseInt(req.params.id), req.body);
+      res.json(report);
+    } catch (error) {
+      res.status(404).send("Report not found");
+    }
   });
 
   const httpServer = createServer(app);
