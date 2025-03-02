@@ -42,6 +42,9 @@ export default function CreateReport() {
         respirationRate: 0,
       },
       symptoms: [],
+      triageResult: null,
+      doctorRecommendation: null,
+      createdAt: null,
     },
   });
 
@@ -140,7 +143,11 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Age</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -258,7 +265,11 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Heart Rate (bpm)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -272,7 +283,11 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Oxygen Saturation (%)</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={e => field.onChange(parseInt(e.target.value) || 0)} 
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -288,7 +303,12 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Blood Pressure</FormLabel>
                         <FormControl>
-                          <Input {...field} placeholder="120/80" />
+                          <Input 
+                            {...field}
+                            placeholder="120/80"
+                            value={field.value || ""}
+                            onChange={e => field.onChange(e.target.value)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -302,7 +322,11 @@ export default function CreateReport() {
                       <FormItem>
                         <FormLabel>Respiration Rate</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} onChange={e => field.onChange(parseInt(e.target.value))} />
+                          <Input 
+                            type="number" 
+                            {...field} 
+                            onChange={e => field.onChange(parseInt(e.target.value) || 0)}
+                          />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -319,7 +343,8 @@ export default function CreateReport() {
                       <FormControl>
                         <Textarea
                           {...field}
-                          onChange={e => field.onChange(e.target.value.split('\n'))}
+                          value={Array.isArray(field.value) ? field.value.join('\n') : ''}
+                          onChange={e => field.onChange(e.target.value.split('\n').map(s => s.trim()).filter(Boolean))}
                           placeholder="Enter symptoms (one per line)"
                           className="h-32"
                         />
