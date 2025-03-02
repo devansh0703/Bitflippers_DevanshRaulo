@@ -17,6 +17,12 @@ type TriageResult = {
   explanation: string;
 };
 
+type DoctorRecommendationInput = {
+  vitals: VitalSigns;
+  symptoms: string[];
+  triageResult: TriageResult;
+};
+
 function analyzeVitals(vitals: VitalSigns): { score: number; reasons: string[] } {
   let score = 0;
   const reasons: string[] = [];
@@ -130,4 +136,75 @@ export async function getTriageAssessment(input: TriageInput): Promise<TriageRes
       explanation: `NON-URGENT STATUS\n\nAssessment:\n${allReasons.length ? allReasons.map(r => "- " + r).join("\n") : "- Vital signs within normal ranges\n- No critical or urgent symptoms reported"}\n\nRecommendation: Patient is stable and can be evaluated in order of arrival.`,
     };
   }
+}
+
+export async function getDoctorRecommendation(input: DoctorRecommendationInput): Promise<string> {
+  // Simulate API delay
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  const { vitals, symptoms, triageResult } = input;
+
+  // Common medications based on symptoms
+  const medicationRecommendations: string[] = [];
+  const interventions: string[] = [];
+  const monitoringInstructions: string[] = [];
+
+  // Analyze vitals for interventions
+  if (vitals.heartRate > 120 || vitals.heartRate < 50) {
+    interventions.push("- Continuous cardiac monitoring");
+    monitoringInstructions.push("- Monitor heart rate every 5 minutes");
+  }
+
+  if (vitals.oxygenSaturation < 95) {
+    interventions.push("- Administer supplemental oxygen");
+    monitoringInstructions.push("- Monitor oxygen saturation continuously");
+  }
+
+  const [systolic, diastolic] = vitals.bloodPressure.split('/').map(Number);
+  if (systolic > 180 || systolic < 90 || diastolic > 120 || diastolic < 60) {
+    interventions.push("- Regular blood pressure monitoring");
+    monitoringInstructions.push("- Record blood pressure every 10 minutes");
+  }
+
+  // Analyze symptoms for medication recommendations
+  for (const symptom of symptoms) {
+    if (/pain|ache/i.test(symptom)) {
+      medicationRecommendations.push("- Consider appropriate analgesics based on pain severity");
+    }
+    if (/fever|temperature/i.test(symptom)) {
+      medicationRecommendations.push("- Antipyretic medication if temperature exceeds 38.5°C");
+    }
+    if (/breathing|breath/i.test(symptom)) {
+      medicationRecommendations.push("- Bronchodilators may be indicated");
+      interventions.push("- Position patient for optimal breathing");
+    }
+    if (/bleeding/i.test(symptom)) {
+      interventions.push("- Apply direct pressure to bleeding sites");
+      interventions.push("- Prepare for potential fluid resuscitation");
+    }
+    if (/allergic|allergy/i.test(symptom)) {
+      medicationRecommendations.push("- Consider antihistamines if allergic reaction suspected");
+    }
+  }
+
+  // Generate comprehensive recommendation
+  return `MEDICAL RECOMMENDATION
+
+TRIAGE LEVEL: ${triageResult.severity.toUpperCase()}
+${triageResult.explanation}
+
+RECOMMENDED INTERVENTIONS:
+${interventions.length ? interventions.join('\n') : '- No immediate interventions required'}
+
+MEDICATION CONSIDERATIONS:
+${medicationRecommendations.length ? medicationRecommendations.join('\n') : '- No specific medications indicated at this time'}
+
+MONITORING INSTRUCTIONS:
+${monitoringInstructions.length ? monitoringInstructions.join('\n') : '- Standard vital sign monitoring'}
+
+ADDITIONAL NOTES:
+- Reassess patient condition regularly
+- Document all interventions and patient responses
+- Contact medical control for any significant changes
+`;
 }

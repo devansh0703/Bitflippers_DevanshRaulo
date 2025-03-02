@@ -5,17 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, MapPin, LogOut } from "lucide-react";
+import { Loader2, MapPin, LogOut, Wand2 } from "lucide-react";
 import { useState } from "react";
 import PatientDetails from "@/components/patient-details";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/use-auth";
+import { useDoctorRecommendation } from "@/hooks/use-doctor-recommendation";
 
 export default function DoctorDashboard() {
   const { toast } = useToast();
   const { user, logoutMutation } = useAuth();
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [recommendation, setRecommendation] = useState("");
+  const { generateRecommendation, isGenerating } = useDoctorRecommendation();
 
   const { data: reports, isLoading } = useQuery<Report[]>({
     queryKey: ["/api/reports"],
@@ -36,6 +38,20 @@ export default function DoctorDashboard() {
       setRecommendation("");
     },
   });
+
+  const handleGenerateRecommendation = async () => {
+    if (!selectedReport) return;
+
+    const aiRecommendation = await generateRecommendation({
+      vitals: selectedReport.vitals,
+      symptoms: selectedReport.symptoms,
+      triageResult: selectedReport.triageResult!,
+    });
+
+    if (aiRecommendation) {
+      setRecommendation(aiRecommendation);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -154,12 +170,27 @@ export default function DoctorDashboard() {
                 </div>
 
                 <div className="space-y-2">
-                  <h3 className="font-medium">Your Recommendation</h3>
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">Your Recommendation</h3>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleGenerateRecommendation}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Wand2 className="mr-2 h-4 w-4" />
+                      )}
+                      Generate AI Recommendation
+                    </Button>
+                  </div>
                   <Textarea
                     value={recommendation}
                     onChange={(e) => setRecommendation(e.target.value)}
                     placeholder="Enter your treatment recommendations..."
-                    className="h-32"
+                    className="h-64 font-mono"
                   />
                 </div>
 
